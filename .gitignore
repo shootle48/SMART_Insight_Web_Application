@@ -1,0 +1,17 @@
+# ของที่ต้องสร้างใหม่บนเครื่องปลายทางเสมอ
+# node_modules ผูกกับ OS/สถาปัตยกรรม — ของ Windows x64 เอาไปรันบน Pi arm64 ไม่ได้
+node_modules/
+dist/
+
+# ความลับ / ค่าเฉพาะเครื่อง
+.env
+.env.*
+!.env.example
+
+# ข้อมูลที่ container เขียน (mosquitto persistence ฯลฯ)
+data/
+*.log
+
+# ขยะของ OS
+.DS_Store
+Thumbs.db

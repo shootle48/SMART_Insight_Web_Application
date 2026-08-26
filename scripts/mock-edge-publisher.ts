@@ -1,0 +1,252 @@
+// ยืนแทน edge device ของทีม AI จนกว่าของจริงจะมี
+//
+//   bun run mock-edge
+//
+// จำลอง 3 ตู้ ยิงตามสัญญาใน src/contract/ เพื่อให้ ingest / DB / dashboard
+// สร้างและทดสอบได้ก่อนที่ edge จริงจะพร้อม ลบไฟล์นี้เมื่อของจริงยิงเข้ามาแล้ว
+//
+// จุดวัดทั้งหมดยกช่วงค่า/หน่วยมาจาก ../bench/samples.json ของจริง ไม่ได้แต่งเอง
+// รวมเคสยาก 3 แบบที่ของจริงมี: ช่วงติดลบ, ช่วงเล็กมาก, หน้าปัดไม่มีหน่วย
+
+import mqtt from "mqtt";
+import {
+  meterTopics,
+  type MeterFrameMessage,
+  type DeviceHeartbeatMessage,
+  type PointReading,
+  type PointKind,
+  type DeviceStatusMessage,
+} from "../src/contract";
+
+const BROKER_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
+const FRAME_INTERVAL_MS = Number(process.env.MOCK_FRAME_INTERVAL_MS ?? 5_000);
+const HEARTBEAT_INTERVAL_MS = Number(process.env.MOCK_HEARTBEAT_INTERVAL_MS ?? 15_000);
+
+// อัตราที่อ่านไม่ออก — ตั้งใจไม่ให้เป็นศูนย์
+// demo ที่อ่านได้ครบ 100% ตลอดจะทำให้ทุกคนเข้าใจผิดว่าหน้าจอไม่ต้องรับมือกรณีอ่านไม่ออก
+const UNREADABLE_RATE = 0.04;
+const UNCERTAIN_RATE = 0.08;
+// เข็มชี้เลยสุดสเกล — ของจริงใน samples.json มีเคสนี้ (min 0.0 / max 0.099 / truth 0.2)
+const OUT_OF_RANGE_RATE = 0.02;
+
+type PointSpec = {
+  point_id: string;
+  kind: PointKind;
+  unit: string | null;
+  min_value?: number;
+  max_value?: number;
+  drift?: number; // ขยับได้มากสุดต่อเฟรม
+  states?: string[]; // สำหรับ LAMP
+  note?: string; // ที่มาของช่วงค่า อ้าง samples.json
+};
+
+type DeviceSpec = { device_id: string; camera_id: string; points: PointSpec[] };
+
+// 3 ตู้ ตั้งใจให้ไม่เหมือนกัน — หน้าจอห้ามสมมติว่าจำนวนจุดหรือชุดหน่วยคงที่
+const DEVICES: DeviceSpec[] = [
+  {
+    device_id: "edge-01",
+    camera_id: "cam-panel-a",
+    points: [
+      { point_id: "pt-a-boiler-pressure", kind: "GAUGE", unit: "bar", min_value: 0, max_value: 4, drift: 0.12, note: "bar_gauge_f00300.png" },
+      { point_id: "pt-a-header-pressure", kind: "GAUGE", unit: "psi", min_value: 0, max_value: 500, drift: 9, note: "High-Pressure-Gauge-Meter.jpg" },
+      { point_id: "pt-a-run-lamp", kind: "LAMP", unit: null, states: ["GREEN", "GREEN", "GREEN", "OFF"] },
+    ],
+  },
+  {
+    device_id: "edge-02",
+    camera_id: "cam-panel-b",
+    points: [
+      { point_id: "pt-b-vacuum", kind: "GAUGE", unit: "bar", min_value: -1, max_value: 1.5, drift: 0.08, note: "images.jpg — ช่วงติดลบ" },
+      { point_id: "pt-b-motor-rpm", kind: "GAUGE", unit: "RPM", min_value: 0, max_value: 10, drift: 0.3, note: "images (1).jpg" },
+      { point_id: "pt-b-batch-counter", kind: "SEVEN_SEGMENT", unit: null, min_value: 0, max_value: 9.9, drift: 0.4, note: "091619-01.jpg — ไม่มีหน่วย" },
+    ],
+  },
+  {
+    device_id: "edge-03",
+    camera_id: "cam-panel-c",
+    points: [
+      { point_id: "pt-c-manifold-bp", kind: "GAUGE", unit: "mmHg", min_value: 20, max_value: 300, drift: 5, note: "bp_gauge_f00200.png" },
+      { point_id: "pt-c-control-volt", kind: "GAUGE", unit: "V", min_value: -5, max_value: 15, drift: 0.4, note: "51biXXAiKIL — ช่วงติดลบ" },
+      { point_id: "pt-c-clearance", kind: "GAUGE", unit: "mm", min_value: 0, max_value: 0.099, drift: 0.004, note: "images (2).jpg — ช่วงเล็กมาก + truth เกินสเกล" },
+      { point_id: "pt-c-alarm-lamp", kind: "LAMP", unit: null, states: ["OFF", "OFF", "OFF", "OFF", "RED"] },
+    ],
+  },
+];
+
+/** ค่าล่าสุดต่อจุด เพื่อให้เฟรมถัดไปดูเป็นแนวโน้ม ไม่ใช่สุ่มกระโดด */
+const lastValue = new Map<string, number>();
+
+function nextNumeric(spec: PointSpec): number {
+  const min = spec.min_value ?? 0;
+  const max = spec.max_value ?? 100;
+  const centre = (min + max) / 2;
+  const previous = lastValue.get(spec.point_id) ?? centre;
+  const step = (Math.random() - 0.5) * 2 * (spec.drift ?? (max - min) / 40);
+  // ดึงกลับเข้าหากลางสเกลเบา ๆ ไม่งั้น demo ยาว ๆ ค่าจะไหลไปกองที่ปลายสเกล
+  const pullBack = (centre - previous) * 0.05;
+  let next = previous + step + pullBack;
+
+  if (Math.random() < OUT_OF_RANGE_RATE) {
+    next = Math.random() < 0.5 ? max + (max - min) * 0.08 : min - (max - min) * 0.08;
+  } else {
+    next = Math.min(max, Math.max(min, next));
+  }
+
+  lastValue.set(spec.point_id, next);
+  // ปัดตามความละเอียดของสเกล — สเกล 0..0.099 ต้องเหลือทศนิยมมากกว่าสเกล 0..500
+  const decimals = Math.max(0, Math.min(4, Math.ceil(-Math.log10((max - min) / 200))));
+  return Number(next.toFixed(decimals));
+}
+
+function readPoint(spec: PointSpec): PointReading {
+  const roll = Math.random();
+
+  if (roll < UNREADABLE_RATE) {
+    return {
+      point_id: spec.point_id,
+      kind: spec.kind,
+      value_num: null,
+      value_text: null,
+      unit: spec.unit,
+      confidence: null,
+      quality: "UNREADABLE",
+    };
+  }
+
+  const quality = roll < UNREADABLE_RATE + UNCERTAIN_RATE ? "UNCERTAIN" : "OK";
+  const confidence = Number(
+    (quality === "UNCERTAIN" ? 0.4 + Math.random() * 0.25 : 0.9 + Math.random() * 0.1).toFixed(2),
+  );
+
+  if (spec.kind === "LAMP") {
+    const states = spec.states ?? ["UNKNOWN"];
+    const picked = states[Math.floor(Math.random() * states.length)] ?? "UNKNOWN";
+    return {
+      point_id: spec.point_id,
+      kind: "LAMP",
+      value_num: null,
+      value_text: picked,
+      unit: null,
+      confidence,
+      quality,
+    };
+  }
+
+  return {
+    point_id: spec.point_id,
+    kind: spec.kind,
+    value_num: nextNumeric(spec),
+    value_text: null,
+    unit: spec.unit,
+    confidence,
+    quality,
+  };
+}
+
+const buildFrame = (device: DeviceSpec): MeterFrameMessage => ({
+  message_type: "meter_frame",
+  device_id: device.device_id,
+  camera_id: device.camera_id,
+  frame_id: `frm-${device.device_id}-${Date.now()}`,
+  captured_at: new Date().toISOString(),
+  readings: device.points.map(readPoint),
+});
+
+const buildHeartbeat = (device: DeviceSpec): DeviceHeartbeatMessage => ({
+  message_type: "device_heartbeat",
+  device_id: device.device_id,
+  sent_at: new Date().toISOString(),
+  device_status: "ONLINE",
+  ai_service_status: "RUNNING",
+  storage_usage_percent: Math.round(30 + Math.random() * 40),
+  software_version: "0.0.0-mock",
+  model_version: "mock-gauge-0.1",
+  cameras: [{ camera_id: device.camera_id, camera_status: "ONLINE" }],
+});
+
+// เปิด connection แยกต่อเครื่อง — LWT ผูกกับ connection ไม่ใช่กับ topic
+// ถ้ารวม 3 เครื่องไว้ใน connection เดียวจะตั้ง will ได้ใบเดียว และ edge จริงก็ต่อแยกกันอยู่แล้ว
+const clients = DEVICES.map((device) => {
+  const offline: DeviceStatusMessage = {
+    message_type: "device_status",
+    device_id: device.device_id,
+    status: "OFFLINE",
+  };
+
+  const client = mqtt.connect(BROKER_URL, {
+    clientId: `mock-${device.device_id}-${process.pid}`,
+    reconnectPeriod: 2_000,
+    // broker จะส่งข้อความนี้แทนเรา ถ้าเราหลุดแบบไม่ได้บอกลา (ไฟดับ/สายหลุด/kill -9)
+    will: {
+      topic: meterTopics.status(device.device_id),
+      payload: Buffer.from(JSON.stringify(offline)),
+      qos: 1,
+      retain: true,
+    },
+  });
+
+  const publish = (topic: string, payload: object, retain: boolean) => {
+    client.publish(topic, JSON.stringify(payload), { qos: 1, retain }, (err) => {
+      if (err) console.error(`[${device.device_id}] publish ล้มเหลว ${topic}:`, err.message);
+    });
+  };
+
+  client.on("connect", () => {
+    const online: DeviceStatusMessage = {
+      message_type: "device_status",
+      device_id: device.device_id,
+      status: "ONLINE",
+    };
+    // ประกาศว่ามีชีวิตทันทีที่ต่อติด แล้วค่อยตามด้วย heartbeat และเฟรมแรก
+    publish(meterTopics.status(device.device_id), online, true);
+    publish(meterTopics.heartbeat(device.device_id), buildHeartbeat(device), false);
+    publish(meterTopics.frame(device.device_id), buildFrame(device), true);
+    console.log(`[${device.device_id}] ออนไลน์ — ${device.points.length} จุดวัด`);
+  });
+
+  client.on("error", (err) => console.error(`[${device.device_id}] mqtt error:`, err.message));
+
+  return { device, client, publish };
+});
+
+setInterval(() => {
+  for (const { device, publish } of clients) {
+    publish(meterTopics.frame(device.device_id), buildFrame(device), true);
+  }
+}, FRAME_INTERVAL_MS);
+
+setInterval(() => {
+  for (const { device, publish } of clients) {
+    publish(meterTopics.heartbeat(device.device_id), buildHeartbeat(device), false);
+  }
+}, HEARTBEAT_INTERVAL_MS);
+
+console.log(`[mock-edge] ${BROKER_URL} · ${DEVICES.length} เครื่อง · เฟรมทุก ${FRAME_INTERVAL_MS}ms`);
+
+// ⚠️ ตั้งใจไม่ล้าง retained frame ตอนออก และไม่พึ่ง handler นี้เป็นกลไกหลัก
+// สัญญาณบน Windows ส่งเข้ามาไม่ถึงอยู่แล้ว และต่อให้ถึง (บน Linux) ก็ยังไม่ครอบคลุม
+// ไฟดับ/สายหลุด/kill -9 ซึ่งเป็นสิ่งที่เกิดจริงกับ edge ในโรงงาน
+// ตัวที่รับประกันคือ LWT ข้างบน — broker ประกาศ OFFLINE ให้เองไม่ว่าเราจะตายยังไง
+// ส่วนนี้เป็นแค่การบอกลาให้เร็วขึ้นเมื่อปิดแบบสุภาพได้เท่านั้น
+let shuttingDown = false;
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log("[mock-edge] ปิด — ประกาศ OFFLINE");
+    let pending = clients.length;
+    for (const { device, client } of clients) {
+      const offline: DeviceStatusMessage = {
+        message_type: "device_status",
+        device_id: device.device_id,
+        status: "OFFLINE",
+      };
+      client.publish(meterTopics.status(device.device_id), JSON.stringify(offline), { qos: 1, retain: true }, () => {
+        client.end(false);
+        if (--pending === 0) process.exit(0);
+      });
+    }
+    setTimeout(() => process.exit(0), 2_000);
+  });
+}

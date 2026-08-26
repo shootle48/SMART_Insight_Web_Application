@@ -1,0 +1,15 @@
+# ปักหมุดให้ทุกไฟล์เป็น LF ทั้งใน repo และใน working tree
+#
+# โปรเจกต์นี้เขียนบน Windows แต่รันจริงบน Raspberry Pi (Linux) ถ้าปล่อยให้ Windows
+# checkout เป็น CRLF แล้ว push ขึ้นไป shell script จะพังบน Pi ด้วย
+# `bad interpreter: /bin/bash^M` ซึ่งอ่าน error แล้วไม่มีทางเดาต้นตอได้เลย
+* text=auto eol=lf
+
+# ไฟล์ที่ "ต้อง" เป็น LF เด็ดขาด (ตัวแปลภาษาอ่าน shebang ตรง ๆ)
+*.sh   text eol=lf
+*.conf text eol=lf
+
+# ไฟล์ binary — อย่าไปยุ่งกับ byte ข้างใน
+*.png binary
+*.jpg binary
+*.pt  binary
