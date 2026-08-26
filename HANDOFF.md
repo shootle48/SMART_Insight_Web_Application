@@ -30,7 +30,7 @@
 | Docker Desktop | ✅ เปิดแล้ว v29.7.2 |
 | container `meter-mqtt` | ✅ `eclipse-mosquitto:2` -p 127.0.0.1:1883 mount `deploy/mosquitto.conf` |
 | container postgres | ❌ ยังไม่ได้สร้าง (รอ T-003) |
-| git ในโฟลเดอร์นี้ | ❌ ยังไม่ `git init` (template README สั่งให้ทำเป็นข้อ 3) |
+| git ในโฟลเดอร์นี้ | ✅ `main` @ 690eb32 · remote `origin` = github.com/shootle48/SMART_Insight_Web_Application |
 
 ### Pi 5 (เครื่องเป้าหมายจริง)
 | | |
@@ -83,6 +83,10 @@
 - **retained message ไม่ตายตามคนส่ง** — edge ตายแล้วค่าเก่ายังค้างบน broker ; UI ต้องเช็คอายุ
   `captured_at` เอง และ mock ต้องล้าง retained ตอนปิด ไม่งั้นคนถัดไปเห็นเลขเก่าโดยไม่รู้ตัว
 - **`ifconfig` บน Debian 13** ไม่มีติดมาแล้ว ใช้ `hostname -I` หรือ `ip -4 addr` แทน
+- **ห้ามก๊อป `node_modules/` ขึ้น Pi** — ของบนเครื่อง dev เป็น Windows x64 ต้อง `bun install`
+  ใหม่บน Pi ให้ดึง arm64 มาเอง (`.gitignore` กันไว้แล้ว) ; `dist/` ก็ build ใหม่บน Pi
+- **`.gitattributes` ปักหมุด `eol=lf`** — อย่าถอด ไม่งั้น shell script ที่เขียนบน Windows
+  จะขึ้น Pi แล้วพังด้วย `bad interpreter: /bin/bash^M`
 - **`app.notFound()` ของ Hono เป็น global** — mount router ใต้ `/api` ไม่ได้กัน path ใต้ `/api`
   ที่ไม่ match ออกจากมัน ถ้าไม่ดักเอง จะได้ HTML 200 แทน 404 แล้ว client พังที่ JSON.parse
 - **Bun script shell ไม่รองรับ `&`** (background command) — ใช้ `concurrently` แทน
