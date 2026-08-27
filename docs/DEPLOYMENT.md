@@ -73,7 +73,9 @@ docker port meter-mqtt && docker port meter-postgres
 cd ~/Meter
 bun install
 bun run db:migrate
-bun run db:seed        # ข้อมูลตั้งต้นสำหรับ dev — ข้ามได้ถ้ามี edge จริงยิงเข้ามาแล้ว
+# ⚠️ db:seed ใส่ข้อมูล "ปลอม" สำหรับ dev — **อย่ารันบนเครื่องที่มีข้อมูลจริงแล้ว**
+# ถ้าเผลอรันไปแล้ว ล้างด้วย: bun run purge-dev-seed --yes  (ดูก่อนได้ด้วยการรันโดยไม่ใส่ --yes)
+# bun run db:seed
 bun run build
 ```
 
@@ -120,7 +122,13 @@ sudo raspi-config    # Display Options → Screen Blanking → Disable
 ```
 ถ้าไม่ขึ้น ดู `~/meter-kiosk.log`
 
-> ถ้าหลัง reboot จอไม่ขึ้นเอง แปลว่า session ไม่ได้อ่าน `~/.config/autostart`
+> ✅ ยืนยันบนเครื่องจริงแล้วว่า **`~/.config/autostart` ใช้ได้** — `/etc/xdg/labwc/autostart`
+> ของ Pi OS เรียก `lxsession-xdg-autostart` ซึ่งอ่านโฟลเดอร์นั้นให้อยู่แล้ว
+> **ห้ามสร้าง `~/.config/labwc/autostart` เอง** — labwc จะใช้ไฟล์ส่วนตัวแทนของระบบทั้งไฟล์
+> แล้ว taskbar (`wf-panel-pi`) กับ desktop (`pcmanfm-pi`) จะไม่ถูกเรียก = เดสก์ท็อปพัง
+>
+> ถ้าหลัง reboot จอยังไม่ขึ้น ให้ดู `~/meter-kiosk.log` ก่อนเสมอ — บอกได้ว่าสคริปต์ถูกเรียกไหม
+> และตายที่ขั้นไหน · ถ้า session ไม่ได้อ่าน `~/.config/autostart` จริง ๆ
 > เช็คว่าใช้ compositor อะไรด้วย `ps -e | grep -Ei 'labwc|wayfire'` แล้วใส่ autostart ตามตัวนั้นแทน:
 > - **labwc** → เพิ่มบรรทัด `/home/pi/Meter/deploy/kiosk/kiosk-launch.sh &` ใน `~/.config/labwc/autostart`
 > - **wayfire** → เพิ่ม `[autostart]` `meter = /home/pi/Meter/deploy/kiosk/kiosk-launch.sh` ใน `~/.config/wayfire.ini`
@@ -170,6 +178,13 @@ cd ~/Meter && git pull && bun install && bun run db:migrate && bun run build && 
 
 **edge จากเครื่องอื่นต่อ broker ไม่ได้** แต่บน Pi ต่อได้ — `docker port meter-mqtt` ต้องเป็น
 `0.0.0.0:1883` ไม่ใช่ `127.0.0.1:1883`
+
+**kiosk ตายด้วย `Missing X server or $DISPLAY`** — chromium เลือก backend เป็น X11
+ทั้งที่ session เป็น Wayland (labwc) · สคริปต์ตรวจ `WAYLAND_DISPLAY` แล้วใส่ `--ozone-platform`
+ให้เองแล้ว ถ้ายังเจอ แปลว่า env ตอน autostart ไม่มีตัวแปรนั้น — ดูบรรทัดแรกของ `~/meter-kiosk.log`
+
+**`bun run start` ขึ้น `EADDRINUSE`** — ไม่ใช่ความผิดพลาด แปลว่า systemd service `meter`
+ทำงานอยู่แล้วและถือ port 3000 ไว้ · ใช้ `systemctl status meter` / `journalctl -u meter -f` แทน
 
 **จอขึ้นแต่ไม่มีข้อมูล** — ดู `curl localhost:3000/api/health` ที่ `checks.ingest.received`
 ถ้าไม่ขยับ = ไม่มีใคร publish เข้ามา ; ถ้า `invalid` ขยับ = มีคนส่งแต่ผิดสัญญา ดู `journalctl -u meter`
