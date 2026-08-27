@@ -21,7 +21,14 @@ export function App() {
     : [{ device: null, points }];
 
   return (
-    <div className="app">
+    <>
+      {/* พื้นหลังเรืองแสง — static ทั้งหมด เบราว์เซอร์ raster ครั้งเดียวแล้วจบ */}
+      <div className="liquid-bg" aria-hidden="true">
+        <div className="blob blob-1" />
+        <div className="blob blob-2" />
+      </div>
+
+      <div className="app">
       <header className="topbar">
         <div>
           <h1>Meter</h1>
@@ -61,6 +68,7 @@ export function App() {
           </section>
         ),
       )}
-    </div>
+      </div>
+    </>
   );
 }

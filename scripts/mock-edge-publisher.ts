@@ -21,6 +21,28 @@ import {
 import { DEV_DEVICES, type DevDevice, type DevPoint } from "../src/db/dev-inventory";
 
 const BROKER_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
+
+// 🔴 กันยิงข้อมูลปลอมเข้าเครื่องจริงโดยไม่ตั้งใจ
+//
+// เคยเกิดมาแล้ว: .env บนเครื่อง dev ถูกแก้ให้ MQTT_URL ชี้ไป Pi ตอนทดสอบ
+// แล้วลืมแก้กลับ พอรัน mock รอบถัดไปข้อมูลปลอมก็ไหลเข้า DB จริงเงียบ ๆ
+// ปนกับข้อมูลของทีม AI โดยไม่มีอะไรเตือน
+//
+// ยิงออกนอกเครื่องได้ แต่ต้องตั้งใจพิมพ์ --allow-remote เอง
+const host = new URL(BROKER_URL).hostname;
+const isLocal = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(host);
+if (!isLocal && !process.argv.includes("--allow-remote")) {
+  console.error(`
+🔴 ปฏิเสธการยิง: ${BROKER_URL} ไม่ใช่ broker ในเครื่องนี้`);
+  console.error(`   mock สร้างข้อมูล "ปลอม" ถ้ายิงเข้าเครื่องจริงจะปนกับข้อมูลของทีม AI`);
+  console.error(`   ถ้าตั้งใจจริง ใส่ --allow-remote ต่อท้าย:`);
+  console.error(`     bun run scripts/mock-edge-publisher.ts --allow-remote
+`);
+  process.exit(1);
+}
+if (!isLocal) {
+  console.warn(`⚠️  กำลังยิงข้อมูลปลอมเข้า ${host} — ล้างด้วย purge-dev-seed --yes เมื่อเสร็จ`);
+}
 const FRAME_INTERVAL_MS = Number(process.env.MOCK_FRAME_INTERVAL_MS ?? 5_000);
 const HEARTBEAT_INTERVAL_MS = Number(process.env.MOCK_HEARTBEAT_INTERVAL_MS ?? 15_000);
 

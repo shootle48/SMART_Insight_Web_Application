@@ -6,6 +6,22 @@
 
 ---
 
+## redesign หน้า dashboard ตามแบบ "Liquid Industrial"  🟢  (2026-08-27)
+- ถอดจาก `stitch_liquid_glass_redesign.zip` — พาเลตต์ charcoal+มิ้นต์ · การ์ด `rgba(255,255,255,.03)`
+  ขอบ `.12` เงา `0 8px 32px` radius 20px · ตัวเลข mono ใหญ่มี glow · แถบสถานะเครื่องมีจุดเรืองแสง
+- **เกจเปลี่ยนจาก path โค้งเป็นวงแหวน `stroke-dasharray/dashoffset`** — ไม่ใช่แค่หน้าตา:
+  ของเดิม `transition: d` บน path เบราว์เซอร์ส่วนใหญ่ไม่ animate จริง ตัว dashoffset เป็นตัวเลขล้วน
+  จึงลื่นได้ทุกที่
+- sparkline เพิ่ม gradient fill ใต้เส้น (`useId` กัน id ชนกันข้ามการ์ด)
+- ไม่เอา 3 อย่างจาก mockup — Google Fonts, backdrop-filter, sidebar/alert (เหตุผลเต็มใน D-011)
+- verify: computed style ตรงสเปกทุกตัว (`backdrop-filter` 0 แห่ง · dasharray 251.33 = 2πr เท่ากับ
+  mockup · ฟอนต์ระบบล้วน) · bundle CSS 5.05→7.12KB, JS เท่าเดิม ·
+  **กฎสำคัญรอดครบ**: UNREADABLE ไม่มี element ตัวเลขเลย (`hasNumber: false`) เกจไม่วาดวงแหวน
+  เส้นกราฟขาดตรงรูโหว่ · ลำดับ offline > stale > unreadable ยังถูก
+- 🔴 เจอระหว่างทาง: `.env` บนเครื่อง dev ถูกแก้ให้ `MQTT_URL` ชี้ไป **Pi** ค้างไว้ ทำให้ mock
+  ยิงข้อมูลปลอมเข้าเครื่องจริงปนกับข้อมูลทีม AI → แก้ `.env` กลับ และ**ใส่ guard ใน mock**
+  ให้ปฏิเสธ broker ที่ไม่ใช่ localhost เว้นแต่พิมพ์ `--allow-remote` เอง
+
 ## purge-dev-seed — ล้างข้อมูล dev ให้เหลือแต่ของจริง  🟡  (2026-08-27)
 - ทีม AI เริ่ม publish ของจริงเข้า Pi แล้ว (`invalid: 0` — payload ผ่านสัญญาหมด และตั้ง
   `device_status` ถูกด้วย) แต่เขาใช้ `device_id = edge-01` ซึ่ง**ชนกับ seed ของเรา**

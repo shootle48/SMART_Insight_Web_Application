@@ -1,127 +1,295 @@
-/* จอ kiosk บนผนังโรงงาน — คุมด้วยหลักเดียว: อ่านออกจากระยะไกล และผิดปกติต้องสะดุดตา
-   พื้นเข้มเพราะจอเปิดค้าง 24 ชม. และแสงโรงงานสว่าง คอนทราสต์สูงอ่านง่ายกว่าพื้นขาว */
+/* "Liquid Industrial" — ถอดจาก DESIGN.md ที่ออกแบบไว้ (zip stitch_liquid_glass_redesign)
+ *
+ * จอนี้ไปอยู่บนผนังโรงงานและเปิดค้าง 24 ชม. ทุกอย่างจึงคุมด้วยสองหลัก:
+ *   1. อ่านออกจากระยะไกล และสถานะผิดปกติต้องสะดุดตาทันที
+ *   2. ไม่กิน GPU ต่อเนื่อง — ไม่มี backdrop-filter และไม่มี animation ที่วิ่งตลอดเวลา
+ *
+ * ต่างจาก mockup โดยตั้งใจ 2 จุด (ดูเหตุผลเต็มใน DECISIONS.md D-011):
+ *   - ใช้ฟอนต์ระบบแทน Google Fonts (หน้างานอาจไม่มีเน็ตออกนอก)
+ *   - blob พื้นหลังเป็น static ไม่ animate (blur 80px ที่ขยับ = re-blur ทุกเฟรม)
+ */
 
 :root {
-  --bg: #0f1216;
-  --panel: #171c22;
-  --panel-2: #1d242c;
-  --line: #2a333d;
-  --text: #e8eef4;
-  --muted: #8a97a6;
+  /* พื้น */
+  --bg: #0b0e11;
+  --bg-top: #111417;
+  --panel: rgba(255, 255, 255, 0.03);
+  --panel-hi: rgba(255, 255, 255, 0.055);
+  --line: rgba(255, 255, 255, 0.12);
+  --line-soft: rgba(255, 255, 255, 0.07);
 
-  --ok: #34d399;
-  --uncertain: #fbbf24;
-  --bad: #f87171;
-  --over: #fb923c;
-  --dead: #64748b;
+  /* ตัวอักษร */
+  --text: #e1e2e7;
+  --muted: #8d9aa3;
+  --dim: #6b7780;
+
+  /* สถานะ */
+  --ok: #00ffc2;
+  --ok-dim: #00e1ab;
+  --uncertain: #ffba20;
+  --over: #ff9d3d;
+  --bad: #ffb4ab;
+  --dead: #5d6a72;
+
+  --r-card: 1.25rem;
+  --r-pill: 999px;
+
+  /* ตัวเลขทุกที่ใช้ mono ของระบบ — DejaVu Sans Mono มีบน Pi OS อยู่แล้ว
+     ที่ต้องเป็น mono เพราะเลขความกว้างเท่ากัน ค่าเปลี่ยนแล้วเลย์เอาต์ไม่ขยับ */
+  --mono: ui-monospace, "DejaVu Sans Mono", "JetBrains Mono", "Cascadia Mono", monospace;
+  --sans: "Segoe UI", system-ui, -apple-system, "Noto Sans Thai", "Noto Sans", sans-serif;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: var(--bg);
   color: var(--text);
-  font-family: "Segoe UI", system-ui, -apple-system, "Noto Sans Thai", sans-serif;
-  font-variant-numeric: tabular-nums; /* ตัวเลขไม่ขยับซ้ายขวาตอนค่าเปลี่ยน */
+  font-family: var(--sans);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
 
-.app { padding: 20px 24px 48px; max-width: 1800px; margin: 0 auto; }
+/* พื้นหลัง: ไล่สีนุ่ม + ก้อนเรืองแสงสองก้อน
+   static ทั้งหมด เบราว์เซอร์ raster ครั้งเดียวแล้วจบ ไม่กินอะไรต่อ */
+.liquid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 40%, var(--bg-top) 0%, var(--bg) 100%);
+  overflow: hidden;
+}
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.14;
+}
+.blob-1 { width: 620px; height: 620px; background: var(--ok); top: -160px; left: -200px; }
+.blob-2 { width: 520px; height: 520px; background: #006c50; bottom: -180px; right: -120px; }
 
-/* ---- แถบบน ---- */
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.topbar h1 { margin: 0; font-size: 26px; letter-spacing: .3px; }
-.sub { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.app { padding: 22px 28px 56px; max-width: 1900px; margin: 0 auto; }
 
-.conn { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); }
+/* ---------- แถบบน ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.topbar h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.sub { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+
+.conn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
 .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dead); }
-.conn-live .conn-dot { background: var(--ok); }
+.conn-live { color: var(--ok); border-color: rgba(0, 255, 194, 0.3); }
+.conn-live .conn-dot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+.conn-connecting { color: var(--uncertain); }
 .conn-connecting .conn-dot { background: var(--uncertain); }
-.conn-lost { border-color: var(--bad); color: var(--bad); }
-.conn-lost .conn-dot { background: var(--bad); animation: blink 1s steps(2) infinite; }
-@keyframes blink { 50% { opacity: .25; } }
+.conn-lost { color: var(--bad); border-color: rgba(255, 180, 171, 0.4); }
+.conn-lost .conn-dot { background: var(--bad); box-shadow: 0 0 10px var(--bad); animation: blink 1.1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0.2; } }
 
-.err { margin: 14px 0; padding: 10px 14px; border-radius: 8px; background: #3b1d1d; border: 1px solid var(--bad); display: flex; gap: 12px; align-items: center; }
-.err button { background: var(--bad); border: 0; color: #1a0d0d; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.err {
+  margin: 14px 0;
+  padding: 12px 16px;
+  border-radius: var(--r-card);
+  background: rgba(255, 180, 171, 0.08);
+  border: 1px solid rgba(255, 180, 171, 0.35);
+  color: var(--bad);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.err button {
+  background: var(--bad);
+  border: 0;
+  color: #4a0d08;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
 .empty { color: var(--muted); }
 
-/* ---- แถบเครื่อง ---- */
-.devicebar { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0 26px; }
-.dev { background: var(--panel); border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; padding: 12px 14px; }
+/* ---------- แถบเครื่อง ---------- */
+.devicebar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-bottom: 30px;
+}
+.dev {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--dead);
+  border-radius: var(--r-card);
+  padding: 14px 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
 .dev-ok { border-left-color: var(--ok); }
 .dev-quiet { border-left-color: var(--uncertain); }
 .dev-offline { border-left-color: var(--bad); }
-.dev-top { display: flex; align-items: center; gap: 8px; }
-.dev-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dead); }
-.dev-ok .dev-dot { background: var(--ok); }
-.dev-quiet .dev-dot { background: var(--uncertain); }
-.dev-offline .dev-dot { background: var(--bad); }
-.dev-name { font-weight: 600; }
-.dev-id { color: var(--muted); font-size: 12px; margin-left: auto; }
-.dev-meta { margin-top: 6px; color: var(--muted); font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+
+.dev-top { display: flex; align-items: center; gap: 9px; }
+.dev-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dead); flex: none; }
+.dev-ok .dev-dot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+.dev-quiet .dev-dot { background: var(--uncertain); box-shadow: 0 0 10px var(--uncertain); }
+.dev-offline .dev-dot { background: var(--bad); box-shadow: 0 0 10px var(--bad); }
+.dev-name { font-weight: 600; font-size: 15px; }
+.dev-id { color: var(--dim); font-size: 12px; margin-left: auto; font-family: var(--mono); }
+.dev-meta {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
 .dev-quiet .dev-meta strong { color: var(--uncertain); }
 .dev-offline .dev-meta strong { color: var(--bad); }
 
-/* ---- กลุ่มต่อเครื่อง ---- */
-.group { margin-bottom: 28px; }
-.group-head { font-size: 15px; font-weight: 600; color: var(--muted); margin: 0 0 12px; display: flex; align-items: baseline; gap: 10px; }
-.group-id { font-size: 12px; opacity: .6; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+/* ---------- กลุ่มต่อเครื่อง ---------- */
+.group { margin-bottom: 34px; }
+.group-head {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0 0 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.group-id { font-size: 12px; color: var(--dim); font-family: var(--mono); font-weight: 400; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
 
-/* ---- การ์ด ---- */
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
-.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.card-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
-.card-id { color: var(--muted); font-size: 11px; }
+/* ---------- การ์ด ---------- */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  padding: 16px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.card-head h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.card-id { color: var(--dim); font-size: 11px; font-family: var(--mono); text-align: right; }
 
-.card-body { display: flex; align-items: center; gap: 14px; min-height: 116px; }
-.card-value { display: flex; align-items: baseline; gap: 6px; flex: 1; justify-content: flex-end; }
-.v-num { font-size: 46px; font-weight: 700; line-height: 1; }
-.v-unit { font-size: 15px; color: var(--muted); }
-.v-text { font-size: 30px; font-weight: 700; }
+.card-body { display: flex; align-items: center; gap: 16px; min-height: 92px; }
+.card-value { display: flex; align-items: baseline; gap: 7px; flex: 1; justify-content: flex-end; }
+
+.v-num {
+  font-family: var(--mono);
+  font-size: 44px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 12px rgba(0, 255, 194, 0.45);
+}
+.v-unit { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+.v-text {
+  font-family: var(--mono);
+  font-size: 30px;
+  font-weight: 500;
+  text-shadow: 0 0 12px rgba(0, 255, 194, 0.45);
+}
 
 /* อ่านไม่ออก: ห้ามดูเหมือนตัวเลข ห้ามให้เข้าใจว่าค่าเป็น 0 */
-.v-unreadable { font-size: 22px; font-weight: 700; color: var(--uncertain); }
-.v-none { font-size: 18px; color: var(--muted); }
+.v-unreadable {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--uncertain);
+  text-shadow: 0 0 12px rgba(255, 186, 32, 0.45);
+}
+.v-none { font-size: 17px; color: var(--dim); }
 
-/* หรี่ทั้งใบเมื่อข้อมูลเชื่อไม่ได้ — ให้ตากวาดผ่านได้เร็วว่าใบไหนยังสด */
-.card-stale, .card-offline, .card-never { opacity: .55; }
-.card-offline { border-color: #4a2626; }
-.card-uncertain .v-num { color: var(--uncertain); }
-.card-over .v-num { color: var(--over); }
+/* หรี่ทั้งใบเมื่อข้อมูลเชื่อไม่ได้ — ให้ตากวาดผ่านได้เร็วว่าใบไหนยังสด
+   และดับ glow ทิ้ง เพราะแสงเรืองคือสัญญาณว่า "ยังมีชีวิต" */
+.card-stale, .card-offline, .card-never { opacity: 0.5; }
+.card-stale .v-num, .card-offline .v-num,
+.card-stale .v-text, .card-offline .v-text { text-shadow: none; color: var(--dead); }
+.card-offline { border-color: rgba(255, 180, 171, 0.22); }
 
-.card-spark { height: 44px; }
-.spark { display: block; width: 100%; height: 44px; }
-.spark-line { fill: none; stroke: var(--ok); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.card-uncertain .v-num { color: var(--uncertain); text-shadow: 0 0 12px rgba(255, 186, 32, 0.45); }
+.card-over .v-num { color: var(--over); text-shadow: 0 0 12px rgba(255, 157, 61, 0.5); }
+
+/* ---------- sparkline ---------- */
+.card-spark { height: 48px; }
+.spark { display: block; width: 100%; height: 48px; overflow: visible; }
+.spark-line { fill: none; stroke: var(--ok-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.spark-area { stroke: none; }
+.spark-stop-top { stop-color: var(--ok-dim); stop-opacity: 0.28; }
+.spark-stop-bottom { stop-color: var(--ok-dim); stop-opacity: 0; }
+.spark-gap { stroke: var(--uncertain); stroke-width: 1; opacity: 0.4; }
+.spark-empty { height: 48px; display: flex; align-items: center; color: var(--dim); font-size: 12px; }
+
 .card-uncertain .spark-line { stroke: var(--uncertain); }
+.card-uncertain .spark-stop-top { stop-color: var(--uncertain); }
+.card-uncertain .spark-stop-bottom { stop-color: var(--uncertain); }
 .card-over .spark-line { stroke: var(--over); }
+.card-over .spark-stop-top { stop-color: var(--over); }
+.card-over .spark-stop-bottom { stop-color: var(--over); }
 .card-stale .spark-line, .card-offline .spark-line { stroke: var(--dead); }
-.spark-gap { stroke: var(--uncertain); stroke-width: 1; opacity: .35; }
-.spark-empty { height: 44px; display: flex; align-items: center; color: var(--muted); font-size: 12px; }
+.card-stale .spark-area, .card-offline .spark-area { display: none; }
 
-.card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+/* ---------- ท้ายการ์ด ---------- */
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+}
 .badges { display: flex; gap: 6px; flex-wrap: wrap; }
-.badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
-.b-offline { background: #4a2626; color: var(--bad); }
-.b-stale { background: #2f3640; color: var(--muted); }
-.b-uncertain { background: #3d3419; color: var(--uncertain); }
-.b-over { background: #43290f; color: var(--over); }
-.b-new { background: #23303d; color: #7dd3fc; }
-.card-age { color: var(--muted); font-size: 11px; margin-left: auto; white-space: nowrap; }
-.card-range { opacity: .7; }
+.badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: var(--r-pill); }
+.b-offline { background: rgba(255, 180, 171, 0.15); color: var(--bad); }
+.b-stale { background: rgba(255, 255, 255, 0.07); color: var(--muted); }
+.b-uncertain { background: rgba(255, 186, 32, 0.15); color: var(--uncertain); }
+.b-over { background: rgba(255, 157, 61, 0.15); color: var(--over); }
+.b-new { background: rgba(162, 201, 255, 0.14); color: #a2c9ff; }
+.card-age { color: var(--dim); font-size: 11px; margin-left: auto; white-space: nowrap; font-family: var(--mono); }
+.card-range { opacity: 0.75; }
 
-/* ---- เกจ ---- */
+/* ---------- เกจ ---------- */
 .gauge { flex: none; }
-.gauge-track { fill: none; stroke: var(--panel-2); stroke-width: 10; stroke-linecap: round; }
-.gauge-fill { fill: none; stroke: var(--ok); stroke-width: 10; stroke-linecap: round; transition: d .3s linear; }
-.gauge-uncertain .gauge-fill { stroke: var(--uncertain); }
-.gauge-over .gauge-fill { stroke: var(--over); }
-.gauge-unreadable .gauge-fill { stroke: none; }
-.gauge-over-dot { fill: var(--over); }
-.card-stale .gauge-fill, .card-offline .gauge-fill { stroke: var(--dead); }
+.gauge-track { fill: none; stroke: rgba(255, 255, 255, 0.1); stroke-width: 8; }
+.gauge-fill {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 8;
+  stroke-linecap: round;
+  /* dashoffset เป็นตัวเลขล้วน จึง transition ได้จริงทุกเบราว์เซอร์
+     ต่างจาก attribute `d` ของ path ที่ส่วนใหญ่ animate ไม่ได้ */
+  transition: stroke-dashoffset 0.8s ease-out;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 194, 0.5));
+}
+.gauge-uncertain .gauge-fill { stroke: var(--uncertain); filter: drop-shadow(0 0 6px rgba(255, 186, 32, 0.5)); }
+.gauge-over .gauge-fill { stroke: var(--over); filter: drop-shadow(0 0 6px rgba(255, 157, 61, 0.55)); }
+.card-stale .gauge-fill, .card-offline .gauge-fill { stroke: var(--dead); filter: none; }
 
 /* จอ kiosk แนวนอนใหญ่ — ขยายตัวเลขให้อ่านจากไกลขึ้น */
 @media (min-width: 1600px) {
-  .v-num { font-size: 56px; }
-  .grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  .v-num { font-size: 54px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(370px, 1fr)); }
 }
