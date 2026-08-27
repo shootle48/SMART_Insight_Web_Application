@@ -50,3 +50,5 @@ trade-off:  ถ้าอัตรายิงสูงกว่าประเ�
 trade-off:  ต้องประกอบ routing/data-fetching เอง (React Router + TanStack Query) ไม่มีของแถมแบบ Next ·
             เหตุผลเดิมที่เคยเชียร์ Next คือ reuse ของพี่ Sun ซึ่งตกไปพร้อม D-004
 ทบทวนเมื่อ: หน้าเว็บโตเกิน ~10 หน้า หรือต้องการ SSR เพื่อ SEO/first paint จริงจัง
+✅ ยืนยันบนเครื่องจริง 2026-08-26: `bun run build` บน Pi 5 arm64 = **178ms**
+   (เครื่อง dev Windows 186ms) — สมมติฐานเรื่องความเร็ว build ถูกต้อง และ Bun บน arm64 ไม่มีปัญหา (D-003)

@@ -6,6 +6,15 @@
 
 ---
 
+## ขึ้น Pi 5 ครั้งแรก — scaffold รันบนเครื่องจริงได้  🟡  (2026-08-26)
+- ลง Docker 29.7.2 (arm64) + Bun 1.4.0 บน Pi · clone repo ไว้ที่ `~/Meter` · รัน `meter-mqtt` container
+- ✅ **`bun run build` บน Pi = 178ms** (dev Windows 186ms) → ยืนยัน D-001/D-003 บนฮาร์ดแวร์เป้าหมาย
+- เปิด http://smsn-pi-office-01.local:3000 จากเครื่อง Windows เห็นหน้า "ok · uptime 76s" จริง
+  → ใช้ mDNS แทน IP ได้ ไม่ต้องตามหา IP ที่เปลี่ยนไปมาอีก
+- กับดักที่เจอระหว่างทาง (บันทึกใน HANDOFF): terminal เดสก์ท็อป Pi เป็น non-login shell อ่านแค่ `.bashrc` ·
+  `usermod -aG docker` ต้อง login ใหม่ · `apt-listchanges` ของเครื่องพังอยู่ก่อนแล้ว
+- verify: หน้าเว็บขึ้นจริงจากเครื่องอื่นในวง LAN · **ยังไม่ได้ทดสอบ MQTT ครบวงบน Pi**
+
 ## T-001 scaffold Bun + Hono + Vite/React  🟢  (T-001)
 - `src/server/index.ts` (entry, prod เสิร์ฟทั้ง API และ static), `src/server/api/index.ts` (`/api/health`),
   `src/web/{index.html,main.tsx,App.tsx}`, `vite.config.ts` (proxy `/api` → :3000 เฉพาะ dev)

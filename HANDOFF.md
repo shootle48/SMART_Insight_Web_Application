@@ -37,8 +37,13 @@
 |---|---|
 | สเปก | Pi 5 Model B Rev 1.1 · RAM 7.9GB · Debian 13 trixie · aarch64 · `graphical.target` |
 | storage | 🔴 **บูตจาก SD 29GB เหลือ 19GB** — ยังไม่ตัดสินใจว่าจะวาง Postgres ไว้ไหน (ดู T-007) |
-| docker / node / bun | ❌ **ยังไม่ได้ลงสักตัว** |
-| IP | ❓ **ยังไม่รู้** — หาด้วย `hostname -I` บน Pi (ifconfig บน trixie ไม่มีให้ใช้แล้ว) |
+| docker | ✅ 29.7.2 `linux/arm64` · user `pi` อยู่ใน group `docker` แล้ว |
+| bun | ✅ 1.4.0 ที่ `~/.bun/bin/bun` |
+| node | ❌ ไม่ได้ลง และ**ไม่ต้องลง** — Bun แทนทั้งหมด |
+| โปรเจกต์ | ✅ clone ไว้ที่ `~/Meter` · `bun run build` = **178ms** |
+| container `meter-mqtt` | ✅ `-p 1883:1883` (เปิดทุก interface ให้ edge ยิงเข้าได้) |
+| ชื่อเครื่อง | `smsn-pi-office-01` → ใช้ **`smsn-pi-office-01.local`** แทน IP ได้เลย (mDNS/avahi)
+  เว็บอยู่ที่ http://smsn-pi-office-01.local:3000 — ไม่ต้องตามหา IP ที่เปลี่ยนไปมา |
 
 ### ⚠️ อย่าสับสนสองเครื่อง
 `../README.md` ของโฟลเดอร์ OCR พูดถึง **Pi Zero 2 W** (RAM 415MB, รันโมเดล YOLO)
@@ -83,6 +88,12 @@
 - **retained message ไม่ตายตามคนส่ง** — edge ตายแล้วค่าเก่ายังค้างบน broker ; UI ต้องเช็คอายุ
   `captured_at` เอง และ mock ต้องล้าง retained ตอนปิด ไม่งั้นคนถัดไปเห็นเลขเก่าโดยไม่รู้ตัว
 - **`ifconfig` บน Debian 13** ไม่มีติดมาแล้ว ใช้ `hostname -I` หรือ `ip -4 addr` แทน
+- **terminal บนเดสก์ท็อป Pi เป็น non-login shell** → อ่าน `~/.bashrc` ไม่อ่าน `~/.profile`
+  (SSH เป็น login shell อ่านทั้งคู่) ; ลงอะไรที่เติม PATH แล้วยังหาไม่เจอ = หน้าต่างนั้นเปิดค้างมาก่อน
+  แก้ด้วย `source ~/.bashrc` หรือเปิดหน้าต่างใหม่ — อย่าไปเติมซ้ำใน `.profile`
+- **`usermod -aG docker` ไม่มีผลกับ shell ที่เปิดอยู่แล้ว** — group ติดมากับ login token ต้อง login ใหม่
+- **`apt-listchanges` บนเครื่องนี้พังอยู่** (`ModuleNotFoundError`) เด้ง traceback ทุกครั้งที่ apt ทำงาน
+  ไม่กระทบการติดตั้ง แก้ด้วย `sudo apt purge apt-listchanges` ถ้ารำคาญ
 - **ห้ามก๊อป `node_modules/` ขึ้น Pi** — ของบนเครื่อง dev เป็น Windows x64 ต้อง `bun install`
   ใหม่บน Pi ให้ดึง arm64 มาเอง (`.gitignore` กันไว้แล้ว) ; `dist/` ก็ build ใหม่บน Pi
 - **`.gitattributes` ปักหมุด `eol=lf`** — อย่าถอด ไม่งั้น shell script ที่เขียนบน Windows
