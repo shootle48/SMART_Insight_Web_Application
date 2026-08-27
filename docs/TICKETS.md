@@ -21,15 +21,6 @@ scope:      cron/systemd timer รัน pg_dump + ส่งออกไปเ�
 done-when:  ลบ DB ทิ้งแล้ว restore จาก dump กลับมาได้ครบ (ไม่ใช่แค่มีไฟล์ dump)
 note:       backup ที่ไม่เคยทดสอบ restore ไม่นับว่าเป็น backup
 
-## T-006 [P1] Dashboard UI — todo
-why:        เป้าหมายของโปรเจกต์ — ให้ฝ่ายผลิตดูค่าบนจอได้
-scope:      หน้าเดียว: การ์ดต่อจุดวัด (ค่า+หน่วย+sparkline), gauge สำหรับค่าที่มี min/max,
-            แถบสถานะ device 3 ตัว, ทำเครื่องหมาย stale/UNREADABLE ให้ต่างจากค่าปกติชัดเจน
-done-when:  เปิดเบราว์เซอร์ค้างไว้ เห็นตัวเลขขยับเองตาม mock โดยไม่ต้อง refresh ·
-            ปิด mock แล้วการ์ดขึ้นสถานะ stale ภายใน 30 วินาที
-files:      src/web/*
-note:       ยังไม่ทำ alarm/threshold — รอทีม AI ตอบว่ามี requirement ไหม
-
 ## T-007 [P2] deploy ขึ้น Pi 5 — todo
 why:        แก้บนเครื่อง dev ไม่นับว่าเสร็จ
 scope:      docker-compose (postgres+mosquitto), systemd unit ของ Bun server,
@@ -108,5 +99,17 @@ files:      src/server/api/*
 done: 2026-08-26 4 endpoint + SSE ทดสอบกับ mock จริง ; history รวมเป็น bucket
       (avg/min/max + นับ UNREADABLE) แทนการคืนแถวดิบแล้ว cap ซึ่งจะตัดข้อมูลเงียบ ๆ ;
       พิสูจน์ว่า SSE ไม่ทิ้ง listener ค้าง (sse_clients 0 -> 2 -> 0)
+
+## T-006 [P1] Dashboard UI — done
+why:        เป้าหมายของโปรเจกต์ — ให้ฝ่ายผลิตดูค่าบนจอได้
+scope:      หน้าเดียว: การ์ดต่อจุดวัด (ค่า+หน่วย+sparkline), gauge สำหรับค่าที่มี min/max,
+            แถบสถานะ device 3 ตัว, ทำเครื่องหมาย stale/UNREADABLE ให้ต่างจากค่าปกติชัดเจน
+done-when:  เปิดเบราว์เซอร์ค้างไว้ เห็นตัวเลขขยับเองตาม mock โดยไม่ต้อง refresh ·
+            ปิด mock แล้วการ์ดขึ้นสถานะ stale ภายใน 30 วินาที
+files:      src/web/*
+note:       ยังไม่ทำ alarm/threshold — รอทีม AI ตอบว่ามี requirement ไหม
+done: 2026-08-26 dashboard + gauge/sparkline เขียน SVG เอง (D-009, bundle +8KB) ;
+      แยก min/max ออกจาก fixture เพื่อให้วาดเกจได้ตั้งแต่ยังไม่ตั้งกล้อง (D-010) ;
+      แก้บั๊ก 2 ตัวที่เจอตอนทดสอบจริง — ลำดับ stale ก่อน unreadable, last_frame_at ไม่อัปเดตจาก SSE
 
 <!-- ย้ายใบที่ done มาไว้นี่ทั้งใบ + เติมบรรทัด `done: YYYY-MM-DD <สรุป 1 บรรทัด>` -->

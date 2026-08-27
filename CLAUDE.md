@@ -17,7 +17,7 @@
   ทำหน้าที่ทั้ง server และจอ kiosk ในตัวเดียว
 - **ต้นทางข้อมูล:** edge device 3 ตัว (ทีม AI) — **สัญญายังไม่เคาะ** ดู `src/contract/`
   งาน OCR/gauge ต้นทางอยู่ที่ `../` (`gauge_bench.py`, `bench/samples.json`)
-- **Stack:** Bun · Hono · Vite + React 19 · TypeScript · Drizzle + Postgres 17 · MQTT.js + Mosquitto 2 · Recharts
+- **Stack:** Bun · Hono · Vite + React 19 · TypeScript · Drizzle + Postgres 17 · MQTT.js + Mosquitto 2 · กราฟเขียน SVG เอง (D-009)
 - **สถานะ:** dev — ยังไม่เคยขึ้นเครื่องจริง
 
 ## รัน / เทส

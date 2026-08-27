@@ -1,0 +1,127 @@
+/* จอ kiosk บนผนังโรงงาน — คุมด้วยหลักเดียว: อ่านออกจากระยะไกล และผิดปกติต้องสะดุดตา
+   พื้นเข้มเพราะจอเปิดค้าง 24 ชม. และแสงโรงงานสว่าง คอนทราสต์สูงอ่านง่ายกว่าพื้นขาว */
+
+:root {
+  --bg: #0f1216;
+  --panel: #171c22;
+  --panel-2: #1d242c;
+  --line: #2a333d;
+  --text: #e8eef4;
+  --muted: #8a97a6;
+
+  --ok: #34d399;
+  --uncertain: #fbbf24;
+  --bad: #f87171;
+  --over: #fb923c;
+  --dead: #64748b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, "Noto Sans Thai", sans-serif;
+  font-variant-numeric: tabular-nums; /* ตัวเลขไม่ขยับซ้ายขวาตอนค่าเปลี่ยน */
+}
+
+.app { padding: 20px 24px 48px; max-width: 1800px; margin: 0 auto; }
+
+/* ---- แถบบน ---- */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.topbar h1 { margin: 0; font-size: 26px; letter-spacing: .3px; }
+.sub { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+.conn { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); }
+.conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dead); }
+.conn-live .conn-dot { background: var(--ok); }
+.conn-connecting .conn-dot { background: var(--uncertain); }
+.conn-lost { border-color: var(--bad); color: var(--bad); }
+.conn-lost .conn-dot { background: var(--bad); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+
+.err { margin: 14px 0; padding: 10px 14px; border-radius: 8px; background: #3b1d1d; border: 1px solid var(--bad); display: flex; gap: 12px; align-items: center; }
+.err button { background: var(--bad); border: 0; color: #1a0d0d; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.empty { color: var(--muted); }
+
+/* ---- แถบเครื่อง ---- */
+.devicebar { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 18px 0 26px; }
+.dev { background: var(--panel); border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; padding: 12px 14px; }
+.dev-ok { border-left-color: var(--ok); }
+.dev-quiet { border-left-color: var(--uncertain); }
+.dev-offline { border-left-color: var(--bad); }
+.dev-top { display: flex; align-items: center; gap: 8px; }
+.dev-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dead); }
+.dev-ok .dev-dot { background: var(--ok); }
+.dev-quiet .dev-dot { background: var(--uncertain); }
+.dev-offline .dev-dot { background: var(--bad); }
+.dev-name { font-weight: 600; }
+.dev-id { color: var(--muted); font-size: 12px; margin-left: auto; }
+.dev-meta { margin-top: 6px; color: var(--muted); font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+.dev-quiet .dev-meta strong { color: var(--uncertain); }
+.dev-offline .dev-meta strong { color: var(--bad); }
+
+/* ---- กลุ่มต่อเครื่อง ---- */
+.group { margin-bottom: 28px; }
+.group-head { font-size: 15px; font-weight: 600; color: var(--muted); margin: 0 0 12px; display: flex; align-items: baseline; gap: 10px; }
+.group-id { font-size: 12px; opacity: .6; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+
+/* ---- การ์ด ---- */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+.card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.card-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.card-id { color: var(--muted); font-size: 11px; }
+
+.card-body { display: flex; align-items: center; gap: 14px; min-height: 116px; }
+.card-value { display: flex; align-items: baseline; gap: 6px; flex: 1; justify-content: flex-end; }
+.v-num { font-size: 46px; font-weight: 700; line-height: 1; }
+.v-unit { font-size: 15px; color: var(--muted); }
+.v-text { font-size: 30px; font-weight: 700; }
+
+/* อ่านไม่ออก: ห้ามดูเหมือนตัวเลข ห้ามให้เข้าใจว่าค่าเป็น 0 */
+.v-unreadable { font-size: 22px; font-weight: 700; color: var(--uncertain); }
+.v-none { font-size: 18px; color: var(--muted); }
+
+/* หรี่ทั้งใบเมื่อข้อมูลเชื่อไม่ได้ — ให้ตากวาดผ่านได้เร็วว่าใบไหนยังสด */
+.card-stale, .card-offline, .card-never { opacity: .55; }
+.card-offline { border-color: #4a2626; }
+.card-uncertain .v-num { color: var(--uncertain); }
+.card-over .v-num { color: var(--over); }
+
+.card-spark { height: 44px; }
+.spark { display: block; width: 100%; height: 44px; }
+.spark-line { fill: none; stroke: var(--ok); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.card-uncertain .spark-line { stroke: var(--uncertain); }
+.card-over .spark-line { stroke: var(--over); }
+.card-stale .spark-line, .card-offline .spark-line { stroke: var(--dead); }
+.spark-gap { stroke: var(--uncertain); stroke-width: 1; opacity: .35; }
+.spark-empty { height: 44px; display: flex; align-items: center; color: var(--muted); font-size: 12px; }
+
+.card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.b-offline { background: #4a2626; color: var(--bad); }
+.b-stale { background: #2f3640; color: var(--muted); }
+.b-uncertain { background: #3d3419; color: var(--uncertain); }
+.b-over { background: #43290f; color: var(--over); }
+.b-new { background: #23303d; color: #7dd3fc; }
+.card-age { color: var(--muted); font-size: 11px; margin-left: auto; white-space: nowrap; }
+.card-range { opacity: .7; }
+
+/* ---- เกจ ---- */
+.gauge { flex: none; }
+.gauge-track { fill: none; stroke: var(--panel-2); stroke-width: 10; stroke-linecap: round; }
+.gauge-fill { fill: none; stroke: var(--ok); stroke-width: 10; stroke-linecap: round; transition: d .3s linear; }
+.gauge-uncertain .gauge-fill { stroke: var(--uncertain); }
+.gauge-over .gauge-fill { stroke: var(--over); }
+.gauge-unreadable .gauge-fill { stroke: none; }
+.gauge-over-dot { fill: var(--over); }
+.card-stale .gauge-fill, .card-offline .gauge-fill { stroke: var(--dead); }
+
+/* จอ kiosk แนวนอนใหญ่ — ขยายตัวเลขให้อ่านจากไกลขึ้น */
+@media (min-width: 1600px) {
+  .v-num { font-size: 56px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+}

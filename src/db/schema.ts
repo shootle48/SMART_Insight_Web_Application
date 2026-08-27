@@ -59,6 +59,11 @@ export const points = pgTable(
     unit: text("unit"),
     kind: text("kind").notNull(),
 
+    // สเกลของหน้าปัด — แยกจาก fixture โดยตั้งใจ (ดูเหตุผลใน contract/points.ts)
+    // UI ต้องใช้วาดเกจ ซึ่งถ้าฝังอยู่ใน fixture จะวาดไม่ได้เลยจนกว่าจะมีคนตั้งกล้องเสร็จ
+    min_value: doublePrecision("min_value"),
+    max_value: doublePrecision("max_value"),
+
     // ค่าสอบเทียบหน้าปัด (cx/cy/r/min_angle/... ตาม contract/points.ts)
     //
     // nullable โดยตั้งใจ: ingest จะสร้างแถวให้อัตโนมัติเมื่อเจอ point_id ที่ไม่รู้จัก

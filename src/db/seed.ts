@@ -29,6 +29,8 @@ for (const device of DEV_DEVICES) {
         label: point.label,
         unit: point.unit,
         kind: point.kind,
+        min_value: point.min_value ?? null,
+        max_value: point.max_value ?? null,
         // จุดวัดจาก seed ถือว่ายืนยันแล้ว ต่างจากจุดที่ ingest เจอเองแล้วสร้างให้
         enabled: true,
       })
@@ -40,6 +42,8 @@ for (const device of DEV_DEVICES) {
           label: point.label,
           unit: point.unit,
           kind: point.kind,
+          min_value: point.min_value ?? null,
+          max_value: point.max_value ?? null,
         },
       });
   }

@@ -18,7 +18,8 @@ export const pointsApi = new Hono();
 pointsApi.get("/", async (c) => {
   const rows = await db.execute(sql`
     SELECT
-      p.point_id, p.device_id, p.camera_id, p.label, p.unit, p.kind, p.enabled, p.fixture,
+      p.point_id, p.device_id, p.camera_id, p.label, p.unit, p.kind, p.enabled,
+      p.min_value, p.max_value, p.fixture,
       d.status AS device_status,
       r.value_num, r.value_text, r.confidence, r.quality,
       r.captured_at, r.received_at, r.frame_id

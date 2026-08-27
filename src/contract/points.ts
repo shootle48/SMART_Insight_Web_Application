@@ -31,9 +31,12 @@ export const gaugeFixtureSchema = z.object({
   r: z.number().positive(), // รัศมี (px)
   min_angle: z.number(), // มุมของขีดต่ำสุด (เรเดียน, atan2 mod 2π)
   max_angle: z.number(), // มุมของขีดสูงสุด
-  min_value: z.number(), // ค่าที่ขีดต่ำสุด — ติดลบได้ (ของจริงมี -5.0 และ -1.0)
-  max_value: z.number(), // ค่าที่ขีดสูงสุด — เล็กมากได้ (ของจริงมี 0.099)
 });
+// ⚠️ ตั้งใจไม่มี min_value/max_value ในนี้ ต่างจาก record ใน bench/samples.json
+// สเกลของหน้าปัด (อ่านได้ถึงเท่าไหร่) กับตำแหน่งเข็มในภาพ เป็นคนละเรื่องที่เปลี่ยนคนละจังหวะ:
+// ขยับกล้อง → fixture เปลี่ยน แต่สเกลเท่าเดิม ; เปลี่ยนตัวมิเตอร์ → สเกลเปลี่ยน แต่กล้องเท่าเดิม
+// รวมไว้ด้วยกันจะทำให้ตั้งกล้องใหม่ทีต้องกรอกสเกลใหม่ทุกครั้ง
+// samples.json รวมไว้เพราะเป็นไฟล์ bench ไม่ใช่โครงของระบบ → ย้ายขึ้นไปอยู่ที่ pointConfig
 
 export const sevenSegmentFixtureSchema = z.object({
   kind: z.literal("SEVEN_SEGMENT"),
@@ -61,7 +64,13 @@ export const pointConfigSchema = z.object({
   label: z.string().min(1), // ชื่อที่คนอ่าน เช่น "แรงดันหม้อไอน้ำ"
   // ของจริงใน samples.json ใช้ "-" แทนไม่มีหน่วย — ฝั่งเราใช้ null ให้ชัดกว่า
   unit: z.string().min(1).nullable(),
-  fixture: pointFixtureSchema,
+
+  // สเกลที่หน้าปัดอ่านได้ — UI ใช้วาดเกจ, AI ใช้แปลงมุมเข็มเป็นค่า
+  // null ได้สำหรับจุดที่ไม่มีสเกล (LAMP) หรือจุดที่ยังไม่มีคนตั้งค่า
+  min_value: z.number().nullable(),
+  max_value: z.number().nullable(),
+
+  fixture: pointFixtureSchema.nullable(),
 });
 export type PointConfig = z.infer<typeof pointConfigSchema>;
 
