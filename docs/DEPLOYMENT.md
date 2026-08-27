@@ -157,6 +157,16 @@ sudo reboot
 cd ~/Meter && git pull && bun install && bun run db:migrate && bun run build && sudo systemctl restart meter
 ```
 
+แล้วสั่งจอโหลดหน้าใหม่ (สั่งจาก SSH ได้ ไม่ต้องเดินไปที่เครื่อง):
+
+```bash
+~/Meter/deploy/kiosk/kiosk-restart.sh
+```
+
+> `kiosk-launch.sh` รันจาก SSH ตรง ๆ **ไม่ได้** เพราะ SSH session ไม่มี `WAYLAND_DISPLAY`
+> ของ session ที่วาดอยู่บนจอ · `kiosk-restart.sh` หาค่านั้นจาก session ที่รันอยู่จริงให้เอง
+> แล้ว detach ด้วย `setsid` ไม่ให้ chromium ตายตามตอน ssh หลุด
+
 ---
 
 ## หนี้ที่ยังค้าง (อย่าลืมก่อนใช้งานจริง)
