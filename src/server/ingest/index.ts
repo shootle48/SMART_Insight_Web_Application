@@ -19,6 +19,7 @@ import {
   type DeviceStatusMessage,
 } from "../../contract";
 import { liveEvents, type LiveReading } from "../events";
+import { shouldStore, markStored, throttleConfig } from "./throttle";
 
 const BROKER_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
 
@@ -26,8 +27,32 @@ const BROKER_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
 // เพราะ broker จะมองว่าเป็น client คนละตัวทุกครั้งที่ restart แล้วทิ้งคิวเดิม
 const CLIENT_ID = process.env.MQTT_CLIENT_ID ?? "meter-ingest";
 
-let stats = { received: 0, invalid: 0, inserted: 0, duplicate: 0 };
-export const ingestStats = () => ({ ...stats });
+let stats = { received: 0, invalid: 0, inserted: 0, duplicate: 0, throttled: 0 };
+export const ingestStats = () => ({ ...stats, ...throttleConfig() });
+
+/** จอต้องเห็นค่าสด แต่ 26 เฟรม/วิ × หลายจุด = Chromium บน Pi รับไม่ไหว
+ *  จำกัดอัตราส่งขึ้นจอแยกจากอัตราเก็บ DB — สองเรื่องนี้คนละวัตถุประสงค์ */
+const LIVE_EMIT_MIN_MS = Number(process.env.LIVE_EMIT_MIN_MS ?? 250);
+const lastEmitAt = new Map<string, number>();
+
+/** สเกลของแต่ละจุด ใช้คำนวณ deadband — cache ไว้ไม่ให้ query ทุกเฟรม */
+const scaleCache = new Map<string, { min: number | null; max: number | null }>();
+
+async function getScale(pointId: string) {
+  const hit = scaleCache.get(pointId);
+  if (hit) return hit;
+  const [row] = await db
+    .select({ min: points.min_value, max: points.max_value })
+    .from(points)
+    .where(drizzleSql`${points.point_id} = ${pointId}`);
+  const scale = { min: row?.min ?? null, max: row?.max ?? null };
+  scaleCache.set(pointId, scale);
+  return scale;
+}
+
+// สเกลเปลี่ยนได้เมื่อมีคนมาตั้งค่าจุดวัด — ล้าง cache เป็นระยะ
+// ไม่ต้องแม่นยำทันที แค่ต้องไม่ค้างตลอดกาล
+setInterval(() => scaleCache.clear(), 5 * 60_000);
 
 /** เครื่องที่ยังไม่มีในตาราง — สร้างให้ก่อนเพื่อไม่ให้ FK ปฏิเสธ */
 async function ensureDevice(deviceId: string) {
@@ -64,42 +89,79 @@ async function handleFrame(frame: MeterFrameMessage) {
     throw new Error(`captured_at แปลงเป็นวันที่ไม่ได้: ${frame.captured_at}`);
   }
 
-  // onConflictDoNothing + returning: แถวที่ถูกกลืนเพราะซ้ำจะไม่กลับมา
-  // จึงใช้ผลลัพธ์นี้แยกได้ว่าอันไหน "ใหม่จริง" ควรส่งขึ้นจอ อันไหนเป็นของซ้ำ
-  const inserted = await db
-    .insert(readings)
-    .values(
-      frame.readings.map((r) => ({
-        point_id: r.point_id,
-        device_id: frame.device_id,
-        frame_id: frame.frame_id,
-        captured_at: capturedAt,
-        value_num: r.value_num,
-        value_text: r.value_text,
-        unit: r.unit,
-        confidence: r.confidence,
-        quality: r.quality,
-      })),
-    )
-    .onConflictDoNothing()
-    .returning({ point_id: readings.point_id });
+  const now = Date.now();
 
-  stats.inserted += inserted.length;
-  stats.duplicate += frame.readings.length - inserted.length;
+  // ---- ตัดสินว่าจะเก็บอันไหน (ดูเหตุผลใน throttle.ts) ----
+  //
+  // ⚠️ ดึงสเกลให้ครบ "ก่อน" เข้าลูปตัดสินใจ เพราะช่วงตัดสินใจต้องไม่มี await คั่น
+  //
+  // เคยพลาดมาแล้ว: เดิมเรียก `await getScale()` อยู่ในลูป ทำให้เฟรมอื่นแทรกเข้ามา
+  // อ่าน lastStored ตัวเดียวกันก่อนที่ใครจะ markStored → ทุกเฟรมตัดสินว่า "เก็บ" พร้อมกัน
+  // ผลคือเพดาน 1 ครั้ง/วินาที ไม่ทำงานเลยตอนยิงรัว (วัดได้ 6.3 แถว/วิ/จุด)
+  // unit test จับไม่ได้เพราะยิงทีละเฟรมแล้วรอ — เจอตอนวัดกับอัตราจริงเท่านั้น
+  const scales = new Map<string, { min: number | null; max: number | null }>();
+  for (const r of frame.readings) scales.set(r.point_id, await getScale(r.point_id));
 
-  if (inserted.length === 0) return; // ของซ้ำล้วน (retained ที่ส่งกลับมาตอน subscribe)
+  // ตั้งแต่บรรทัดนี้จนจบลูป ห้ามมี await เด็ดขาด
+  const keep = [];
+  for (const r of frame.readings) {
+    const decision = shouldStore(r, scales.get(r.point_id)!, now);
+    if (decision.store) {
+      keep.push(r);
+      // mark ทันทีตอนตัดสินใจ ไม่รอผล insert — ยอมแลกว่าถ้า insert ล้ม
+      // จุดนั้นจะถูกข้ามไปจนกว่าจะพ้น deadband/gap ซึ่งเกิดยากและเสียแค่แถวเดียว
+      // แลกกับการที่เพดานอัตราทำงานถูกต้องตลอดเวลา
+      markStored(r, now);
+    } else {
+      stats.throttled += 1;
+    }
+  }
 
-  await db
-    .update(devices)
-    .set({ last_frame_at: new Date() })
-    .where(drizzleSql`${devices.device_id} = ${frame.device_id}`);
+  if (keep.length > 0) {
+    // onConflictDoNothing + returning: แถวที่ถูกกลืนเพราะซ้ำจะไม่กลับมา
+    const inserted = await db
+      .insert(readings)
+      .values(
+        keep.map((r) => ({
+          point_id: r.point_id,
+          device_id: frame.device_id,
+          frame_id: frame.frame_id,
+          captured_at: capturedAt,
+          value_num: r.value_num,
+          value_text: r.value_text,
+          unit: r.unit,
+          confidence: r.confidence,
+          quality: r.quality,
+        })),
+      )
+      .onConflictDoNothing()
+      .returning({ point_id: readings.point_id });
 
-  const fresh = new Set(inserted.map((r) => r.point_id));
-  const live: LiveReading[] = frame.readings
-    .filter((r) => fresh.has(r.point_id))
-    .map((r) => ({ ...r, device_id: frame.device_id, frame_id: frame.frame_id, captured_at: frame.captured_at }));
+    stats.inserted += inserted.length;
+    stats.duplicate += keep.length - inserted.length;
 
-  liveEvents.emit("readings", live);
+    if (inserted.length > 0) {
+      await db
+        .update(devices)
+        .set({ last_frame_at: new Date() })
+        .where(drizzleSql`${devices.device_id} = ${frame.device_id}`);
+    }
+  }
+
+  // ---- ส่งขึ้นจอ: แยกจากการเก็บโดยตั้งใจ ----
+  // จอต้องเห็น "ค่าล่าสุด" เสมอแม้ค่านั้นจะไม่ถูกเก็บลง DB เพราะอยู่ใน deadband
+  // ถ้าผูกสองอย่างนี้เข้าด้วยกัน ตัวเลขบนจอจะค้างนิ่งทั้งที่ของจริงยังไหลอยู่
+  const lastEmit = lastEmitAt.get(frame.device_id) ?? 0;
+  if (now - lastEmit >= LIVE_EMIT_MIN_MS) {
+    lastEmitAt.set(frame.device_id, now);
+    const live: LiveReading[] = frame.readings.map((r) => ({
+      ...r,
+      device_id: frame.device_id,
+      frame_id: frame.frame_id,
+      captured_at: frame.captured_at,
+    }));
+    liveEvents.emit("readings", live);
+  }
 }
 
 async function handleHeartbeat(msg: DeviceHeartbeatMessage) {

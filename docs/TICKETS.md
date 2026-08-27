@@ -6,14 +6,6 @@
 
 # Active
 
-## T-009 [P2] partition ตาราง readings + retention — todo
-why:        SD 19GB มีจำกัด ต้องลบข้อมูลเก่าได้เร็วโดยตารางไม่บวม (D-007 เลื่อนมาจาก D-002)
-scope:      แปลง readings เป็น partitioned by range (captured_at) รายเดือน + งานสร้าง partition
-            ล่วงหน้า + DEFAULT partition กันข้อมูลหาย + policy ลบตามอายุ
-done-when:  ข้ามเดือนแล้ว INSERT ยังผ่าน (ทดสอบด้วยการ insert วันที่เดือนหน้า) ·
-            DROP partition เก่าแล้วพื้นที่คืนจริง
-note:       ทำก่อน production ; ต้องรู้อัตรายิงจริงจากทีม AI ก่อนถึงจะตั้ง retention ได้
-
 ## T-010 [P2] pg_dump cron ออกนอกเครื่อง — todo
 why:        D-006 ยอมให้ Postgres อยู่บน SD โดยแลกกับต้องมี backup นอกเครื่อง
             ถ้าไม่ทำ = ยอมรับความเสี่ยงเปล่า ๆ
@@ -21,21 +13,10 @@ scope:      cron/systemd timer รัน pg_dump + ส่งออกไปเ�
 done-when:  ลบ DB ทิ้งแล้ว restore จาก dump กลับมาได้ครบ (ไม่ใช่แค่มีไฟล์ dump)
 note:       backup ที่ไม่เคยทดสอบ restore ไม่นับว่าเป็น backup
 
-## T-007 [P2] deploy ขึ้น Pi 5 — doing
-why:        แก้บนเครื่อง dev ไม่นับว่าเสร็จ
-scope:      docker-compose (postgres+mosquitto), systemd unit ของ Bun server,
-            Chromium kiosk autostart, เขียน `docs/DEPLOYMENT.md`
-done-when:  reboot Pi แล้วจอขึ้น dashboard เองโดยไม่ต้องพิมพ์อะไร · edge (mock) จากอีกเครื่อง
-            ยิงเข้ามาที่ Pi แล้วค่าขึ้นจอ
-files:      deploy/*, docs/DEPLOYMENT.md
-note:       Pi บูตจาก SD — เคาะแล้วว่าอยู่บน SD ไปก่อน + pg_dump cron (D-006 → T-010)
-progress:   2026-08-27 เขียนไฟล์ครบและทดสอบ compose บนเครื่อง dev แล้ว (ports ถูก, migrate/seed/
-            build/health ผ่านครบ) · **ยังไม่ได้รันบน Pi จริง** — done-when ข้อ reboot กับข้อ
-            ยิงจากเครื่องอื่น ยังพิสูจน์ไม่ได้จนกว่าจะไปรันบนเครื่อง
-            เข้า ssh จาก shell ของ AI ไม่ได้ (key ไม่ผ่าน jump host) ต้องให้บิ๊กรันเอง
-
 ## T-008 [P3] auth + ACL — todo
 why:        ตอนนี้ broker เปิด anonymous ใครอยู่ใน LAN ก็ publish ปลอมได้
+            · **และ wayvnc เปิด `*:5900` ไม่มี auth** (เปิดไว้ช่วง dev ตามที่เคาะ 2026-08-27)
+              ต้องปิดหรือ bind loopback + SSH tunnel ก่อนเครื่องเข้าโรงงาน
 scope:      ผู้ใช้/รหัสผ่านต่อ edge device + topic ACL, auth หน้าเว็บ
 done-when:  edge ที่ไม่มี credential publish ไม่ได้ · เปิดหน้าเว็บโดยไม่ล็อกอินไม่เห็นข้อมูล
 note:       ทำหลัง core เดินครบ (T-001..T-007) — บิ๊กสั่งโฟกัส flow ข้อมูลก่อน
@@ -115,5 +96,34 @@ note:       ยังไม่ทำ alarm/threshold — รอทีม AI ต�
 done: 2026-08-26 dashboard + gauge/sparkline เขียน SVG เอง (D-009, bundle +8KB) ;
       แยก min/max ออกจาก fixture เพื่อให้วาดเกจได้ตั้งแต่ยังไม่ตั้งกล้อง (D-010) ;
       แก้บั๊ก 2 ตัวที่เจอตอนทดสอบจริง — ลำดับ stale ก่อน unreadable, last_frame_at ไม่อัปเดตจาก SSE
+
+## T-007 [P2] deploy ขึ้น Pi 5 — done
+why:        แก้บนเครื่อง dev ไม่นับว่าเสร็จ
+scope:      docker-compose (postgres+mosquitto), systemd unit ของ Bun server,
+            Chromium kiosk autostart, เขียน `docs/DEPLOYMENT.md`
+done-when:  reboot Pi แล้วจอขึ้น dashboard เองโดยไม่ต้องพิมพ์อะไร · edge (mock) จากอีกเครื่อง
+            ยิงเข้ามาที่ Pi แล้วค่าขึ้นจอ
+files:      deploy/*, docs/DEPLOYMENT.md
+note:       Pi บูตจาก SD — เคาะแล้วว่าอยู่บน SD ไปก่อน + pg_dump cron (D-006 → T-010)
+progress:   2026-08-27 เขียนไฟล์ครบและทดสอบ compose บนเครื่อง dev แล้ว (ports ถูก, migrate/seed/
+            build/health ผ่านครบ) · **ยังไม่ได้รันบน Pi จริง** — done-when ข้อ reboot กับข้อ
+            ยิงจากเครื่องอื่น ยังพิสูจน์ไม่ได้จนกว่าจะไปรันบนเครื่อง
+            เข้า ssh จาก shell ของ AI ไม่ได้ (key ไม่ผ่าน jump host) ต้องให้บิ๊กรันเอง
+done: 2026-08-27 reboot แล้วจอขึ้น dashboard เอง · **done-when ข้อ "ยิงจากเครื่องอื่น"
+      ผ่านด้วยของจริง** (ทีม AI publish เข้ามาแล้วการ์ดโผล่บนจอ ดีกว่าทดสอบด้วย mock) ·
+      กับดักที่เจอ 4 อย่างบันทึกใน DEPLOYMENT.md: mosquitto จาก apt จองพอร์ต ·
+      container ที่ run ล้มไม่มี port mapping · chromium เลือก X11 บน Wayland · exec bit หายตอน pull
+
+## T-009 [P1] คุมปริมาณข้อมูล (throttle + retention) — done
+why:        SD 19GB มีจำกัด ต้องลบข้อมูลเก่าได้เร็วโดยตารางไม่บวม (D-007 เลื่อนมาจาก D-002)
+scope:      แปลง readings เป็น partitioned by range (captured_at) รายเดือน + งานสร้าง partition
+            ล่วงหน้า + DEFAULT partition กันข้อมูลหาย + policy ลบตามอายุ
+done-when:  ข้ามเดือนแล้ว INSERT ยังผ่าน (ทดสอบด้วยการ insert วันที่เดือนหน้า) ·
+            DROP partition เก่าแล้วพื้นที่คืนจริง
+note:       ทำก่อน production ; ต้องรู้อัตรายิงจริงจากทีม AI ก่อนถึงจะตั้ง retention ได้
+done: 2026-08-27 **เปลี่ยนวิธีจาก partition เป็น throttle ที่ ingest** (D-012) เพราะวัดของจริง
+      ได้ 26 เฟรม/วิ = 830MB/วัน/จุด และต้นตอคือเก็บค่าที่ไม่มีความหมาย ไม่ใช่ DB เก็บไม่ไหว ·
+      ผล: บีบทิ้ง 89.5% (1878→875 แถว/30วิ ที่ 26Hz) · retention 30 วันทำงานจริง ·
+      smoke-throttle 7/7 · smoke-retention 4/4 · partition ยังไม่ทำ (เหตุผลเดิมใน D-007)
 
 <!-- ย้ายใบที่ done มาไว้นี่ทั้งใบ + เติมบรรทัด `done: YYYY-MM-DD <สรุป 1 บรรทัด>` -->

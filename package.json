@@ -19,7 +19,9 @@
     "smoke-db": "bun run scripts/smoke-db.ts",
     "smoke-ingest": "bun run scripts/smoke-ingest.ts",
     "purge-dev-seed": "bun run scripts/purge-dev-seed.ts",
-    "db-peek": "bun run scripts/db-peek.ts"
+    "db-peek": "bun run scripts/db-peek.ts",
+    "smoke-throttle": "INGEST_MIN_INTERVAL_MS=800 INGEST_MAX_GAP_MS=30000 bun run scripts/smoke-throttle.ts",
+    "smoke-retention": "bun run scripts/smoke-retention.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

@@ -10,6 +10,7 @@ import { ingestStats } from "../ingest/index";
 import { pointsApi } from "./points";
 import { devicesApi } from "./devices";
 import { streamApi, sseClientCount } from "./stream";
+import { retentionStatus, readingsFootprint } from "../retention";
 
 const startedAt = Date.now();
 
@@ -31,6 +32,16 @@ api.get("/health", async (c) => {
 
   const ingest = ingestStats();
 
+  // ขนาดที่กินอยู่จริง — ต้องมองเห็นได้จากภายนอก เพราะ SD เต็มคือความเสี่ยงหลักของเครื่องนี้
+  let storage: unknown = { error: "อ่านไม่ได้" };
+  if (dbOk) {
+    try {
+      storage = { ...(await readingsFootprint()), retention: retentionStatus() };
+    } catch (e) {
+      storage = { error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
   return c.json(
     {
       status: dbOk ? "ok" : "degraded",
@@ -42,6 +53,7 @@ api.get("/health", async (c) => {
         ingest,
         // จอที่ต่อ SSE อยู่ ; ถ้าเลขนี้ไม่ลดหลังปิดจอ = listener รั่ว
         sse_clients: sseClientCount(),
+        storage,
       },
     },
     dbOk ? 200 : 503,

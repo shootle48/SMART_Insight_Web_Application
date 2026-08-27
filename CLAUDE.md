@@ -18,7 +18,7 @@
 - **ต้นทางข้อมูล:** edge device 3 ตัว (ทีม AI) — **สัญญายังไม่เคาะ** ดู `src/contract/`
   งาน OCR/gauge ต้นทางอยู่ที่ `../` (`gauge_bench.py`, `bench/samples.json`)
 - **Stack:** Bun · Hono · Vite + React 19 · TypeScript · Drizzle + Postgres 17 · MQTT.js + Mosquitto 2 · กราฟเขียน SVG เอง (D-009)
-- **สถานะ:** dev — ยังไม่เคยขึ้นเครื่องจริง
+- **สถานะ:** รันบน Pi 5 หน้างานแล้ว (systemd + kiosk) · ทีม AI เริ่มส่งข้อมูลจริงเข้ามาแล้ว
 
 ## รัน / เทส
 
@@ -32,6 +32,8 @@ bun run db:migrate     # สร้าง/อัปเดตตาราง
 bun run db:seed        # ใส่เครื่อง+จุดวัดตั้งต้น (รันซ้ำได้)
 bun run db-peek        # ส่องว่าใน DB มีอะไรอยู่ (อ่านอย่างเดียว)
 bun run smoke-db       # พิสูจน์พฤติกรรม schema (null/นอกสเกล/FK)
+bun run smoke-throttle # พิสูจน์ว่า throttle บีบข้อมูลแต่ไม่กลืนการเปลี่ยนสถานะ
+bun run smoke-retention# พิสูจน์ว่า retention ลบเฉพาะของเก่า
 bun run verify-contract 25   # พิสูจน์ว่า mock ยิงตรงสัญญา (ต้องรัน mock-edge คู่กัน)
 ```
 

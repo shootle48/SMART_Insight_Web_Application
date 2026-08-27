@@ -10,6 +10,7 @@ import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { api } from "./api";
 import { startIngest } from "./ingest/index";
+import { startRetention } from "./retention";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const WEB_ROOT = process.env.WEB_ROOT ?? "./dist/web";
@@ -18,7 +19,10 @@ const SERVE_STATIC = process.env.SERVE_STATIC !== "false";
 
 // ปิดได้ด้วย INGEST=false เวลาอยากรันเฉพาะหน้าเว็บ (เช่นตอนไล่ปัญหา UI)
 // ค่า default คือเปิด เพราะบนเครื่องหน้างานการลืมเปิด ingest = ไม่มีข้อมูลเข้าเลย
-if (process.env.INGEST !== "false") startIngest();
+if (process.env.INGEST !== "false") {
+  startIngest();
+  startRetention();
+}
 
 const app = new Hono();
 

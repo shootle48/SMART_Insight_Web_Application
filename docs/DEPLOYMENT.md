@@ -195,7 +195,8 @@ cd ~/Meter && bunx drizzle-kit studio --host 0.0.0.0 --port 4983
 |---|---|
 | 🔴 **Postgres อยู่บน SD** — ไฟดับกลางคันอาจ corrupt ; ยอมรับไว้โดยแลกกับต้องมี backup นอกเครื่อง (D-006) | **T-010** |
 | ยังไม่มี user/password + ACL บน broker — ใครอยู่ใน LAN ก็ publish ค่ามั่วเข้ามาได้ | **T-008** |
-| ยังไม่มี retention — `readings` โตไปเรื่อย ๆ บน SD ที่เหลือ ~19GB | **T-009** |
+| ~~ยังไม่มี retention~~ ✅ ทำแล้ว — throttle ที่ ingest + ลบข้อมูลเก่ากว่า 30 วัน (D-012) ; ดูขนาดปัจจุบันจาก `/api/health` ที่ `checks.storage` | T-009 done |
+| 🔴 **wayvnc เปิด `*:5900` ไม่มี auth** — เปิดไว้ช่วง dev ต้องปิดก่อนเครื่องเข้าโรงงาน | **T-008** |
 | ยังไม่มี watchdog ที่ restart ตาม `/api/health` — ตอนนี้ systemd restart เฉพาะตอน process ตายเท่านั้น ถ้าแอปยังอยู่แต่ DB ล่มค้าง จะไม่มีใคร restart ให้ | — |
 
 ## แก้ปัญหาที่เจอบ่อย
