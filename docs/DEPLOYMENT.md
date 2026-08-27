@@ -1,34 +1,175 @@
-# DEPLOYMENT — <target: เครื่องอะไร อยู่ไหน path อะไร>
+# DEPLOYMENT — เอาขึ้น Raspberry Pi 5
 
-<!-- เติมตอนมีเครื่องจริง. โปรเจกต์ที่ "ส่งมอบแล้ว" — แก้โค้ดบนเครื่อง dev ยังไม่นับเสร็จ
-     จนกว่าจะผ่าน checklist นี้บนเครื่องจริง -->
+> เครื่องเป้าหมาย: `smsn-pi-office-01` · Pi 5 8GB · Debian 13 (trixie) aarch64 · **บูตจาก SD**
+> โปรเจกต์อยู่ที่ `~/Meter` · เข้าผ่าน ssh alias `pi_5_orc_V5` (ProxyJump ผ่าน v5.smartsensedesign.net)
 
-## ข้อมูลเครื่องจริง
+ทุกคำสั่งข้างล่างรัน **บน Pi** จากโฟลเดอร์ `~/Meter` เว้นแต่ระบุไว้เป็นอย่างอื่น
 
-| อะไร | ค่า |
+---
+
+## สิ่งที่ต้องมีก่อน (ลงไปแล้ว 2026-08-26)
+
+| | เช็คด้วย |
 |---|---|
-| เครื่อง/OS | <เช่น Jetson Orin Nano, Ubuntu 22> |
-| path โปรเจกต์ | <เช่น ~/Desktop/<proj>> |
-| python | <system python3 / venv ไหน — ระวัง: บาง lib ต้องใช้ apt ไม่ใช่ pip (เช่น opencv บน Jetson)> |
-| launcher | <ทางเดียวเท่านั้น: .desktop / systemd / run.sh — ห้ามซ้อน 2 ทาง> |
-| hardware ที่ต่อ | <กล้อง index/พอร์ต, serial port, GPIO pin> |
+| Docker + user อยู่ใน group `docker` | `docker run --rm hello-world` |
+| Bun | `bun --version` → 1.4.0 |
+| repo | `ls ~/Meter` |
 
-## Deploy checklist (ทำตามลำดับ ห้ามข้าม)
+⚠️ **Pi เครื่องนี้เคยมี mosquitto จาก apt จองพอร์ต 1883** ปิดไปแล้วด้วย `sudo systemctl disable --now mosquitto`
+ถ้าเจอ `address already in use` ตอน compose up ให้เช็คว่ามันกลับมาไหม
 
-1. [ ] เครื่อง dev: test ผ่านครบ + `git commit` (มี hash ให้ย้อน)
-2. [ ] copy ไฟล์ที่แก้ **+ ไฟล์ใหม่ทั้งหมด** (เช็ค `git status` ก่อน — ไฟล์ใหม่ลืมง่าย import fail ทั้งแอป)
-3. [ ] config บนเครื่องจริง ≠ dev: <ระบุจุดต่าง เช่น RS485_MODE="real", camera index, DISPLAY=:0>
-4. [ ] รัน preflight (ถ้ามี): <เช่น scripts/preflight_xxx.py — เช็ค hardware ก่อนเปิดแอป>
-5. [ ] เปิดแอป + ดู log start: กล้อง/พอร์ตครบ, ค่า fps/resolution "จริง" ตรงที่ขอ
-6. [ ] ทดสอบ 1 รอบงานจริง end-to-end: <trigger → ผล → บันทึก → output ครบ>
-7. [ ] ปิด-เปิดแอปซ้ำ 1 รอบ (เช็ค recover state / ไม่มี lock ค้าง / instance ไม่ซ้อน)
+---
 
-## Rollback
+## 1. ดึงโค้ดล่าสุด
 
-- <วิธีย้อน: git checkout <hash เดิม> หรือ copy สำรองจากไหน>
+```bash
+cd ~/Meter && git pull
+```
 
-## อาการที่เคยเจอบนเครื่องจริง + วิธีแก้ (เติมสะสม — มีค่ามากตอนตี 3 หน้างาน)
+## 2. ตั้งค่า `.env`
 
-| อาการ | สาเหตุ | แก้ |
-|---|---|---|
-| <แอปเปิดไม่ขึ้น> | <lock ค้าง / instance ซ้อน> | <pkill + ลบ lock + ใช้ launcher เดียว> |
+`.env` ไม่ขึ้น git (มีรหัสผ่าน) ต้องสร้างบนเครื่องเอง **ครั้งเดียว**
+
+```bash
+cd ~/Meter
+PGPW=$(openssl rand -hex 16)
+cat > .env <<EOF
+POSTGRES_PASSWORD=$PGPW
+DATABASE_URL=postgres://meter:$PGPW@localhost:5432/meter
+MQTT_URL=mqtt://localhost:1883
+MQTT_TOPIC_PREFIX=meter
+PORT=3000
+EOF
+chmod 600 .env
+```
+
+> ถ้าเคยตั้งไปแล้วและ container สร้างไปแล้ว **การเปลี่ยนรหัสผ่านใน .env จะไม่เปลี่ยนรหัสใน DB**
+> เพราะ Postgres อ่าน `POSTGRES_PASSWORD` เฉพาะตอนสร้าง volume ครั้งแรก — ถ้าจะเปลี่ยนจริง
+> ต้อง `ALTER USER` ใน psql หรือลบ volume ทิ้ง (ข้อมูลหาย)
+
+## 3. ขึ้น Postgres + Mosquitto
+
+```bash
+cd ~/Meter
+docker compose --env-file .env -f deploy/docker-compose.yml up -d
+```
+
+**ตรวจให้ครบ 3 อย่าง อย่าดูแค่ `docker ps`:**
+
+```bash
+docker compose --env-file .env -f deploy/docker-compose.yml ps
+docker port meter-mqtt && docker port meter-postgres
+(echo > /dev/tcp/127.0.0.1/1883) && echo "1883 ต่อได้"
+```
+
+> 🔴 บทเรียนจากรอบก่อน: `docker run` ที่ล้มตอน setup network จะทิ้ง container ที่ `Up` ได้
+> แต่**ไม่มี port mapping** และ `docker start` ซ้ำไม่ช่วย ต้อง `rm` แล้วสร้างใหม่
+> `docker port` เป็นตัวชี้ขาด — **`ss -lptn` ใช้ไม่ได้** เพราะ Docker รุ่นใหม่ forward ผ่าน
+> netfilter โดยไม่มี process listen บนโฮสต์
+
+## 4. ลง dependency + สร้างตาราง + build หน้าเว็บ
+
+```bash
+cd ~/Meter
+bun install
+bun run db:migrate
+bun run db:seed        # ข้อมูลตั้งต้นสำหรับ dev — ข้ามได้ถ้ามี edge จริงยิงเข้ามาแล้ว
+bun run build
+```
+
+> `bun install` ต้องรันบน Pi เสมอ **ห้ามก๊อป `node_modules` จากเครื่อง dev** เพราะเป็นของ Windows x64
+
+## 5. ตั้ง service ให้ขึ้นเองตอนบูต
+
+```bash
+sudo cp ~/Meter/deploy/meter.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now meter
+systemctl status meter --no-pager
+```
+
+ตรวจว่าใช้ได้จริง:
+
+```bash
+curl -s localhost:3000/api/health
+```
+
+ต้องได้ `"status":"ok"` และ `postgres.ok = true` — ถ้าได้ `503` แปลว่า DB ยังไม่ขึ้นหรือรหัสผ่านไม่ตรง
+
+ดู log:
+```bash
+journalctl -u meter -f
+```
+
+## 6. ตั้งจอ kiosk
+
+```bash
+chmod +x ~/Meter/deploy/kiosk/kiosk-launch.sh
+mkdir -p ~/.config/autostart
+cp ~/Meter/deploy/kiosk/meter-kiosk.desktop ~/.config/autostart/
+```
+
+ปิดการดับหน้าจอ (จอติดผนังต้องติดตลอด):
+```bash
+sudo raspi-config    # Display Options → Screen Blanking → Disable
+```
+
+ลองรันสคริปต์ตรง ๆ ก่อน reboot จะได้รู้ว่ามันพังตรงไหน:
+```bash
+~/Meter/deploy/kiosk/kiosk-launch.sh
+```
+ถ้าไม่ขึ้น ดู `~/meter-kiosk.log`
+
+> ถ้าหลัง reboot จอไม่ขึ้นเอง แปลว่า session ไม่ได้อ่าน `~/.config/autostart`
+> เช็คว่าใช้ compositor อะไรด้วย `ps -e | grep -Ei 'labwc|wayfire'` แล้วใส่ autostart ตามตัวนั้นแทน:
+> - **labwc** → เพิ่มบรรทัด `/home/pi/Meter/deploy/kiosk/kiosk-launch.sh &` ใน `~/.config/labwc/autostart`
+> - **wayfire** → เพิ่ม `[autostart]` `meter = /home/pi/Meter/deploy/kiosk/kiosk-launch.sh` ใน `~/.config/wayfire.ini`
+
+## 7. ทดสอบ definition of done
+
+```bash
+sudo reboot
+```
+
+หลังบูตขึ้นมา **ห้ามพิมพ์อะไรเลย** แล้วต้องได้ครบ 3 ข้อ:
+
+1. จอ Pi ขึ้น dashboard เอง
+2. `curl -s localhost:3000/api/health` ตอบ `ok`
+3. ยิง mock จาก**เครื่องอื่น**แล้วค่าขึ้นจอ:
+   ```bash
+   # รันบนเครื่อง dev
+   MQTT_URL=mqtt://smsn-pi-office-01.local:1883 bun run mock-edge
+   ```
+
+---
+
+## อัปเดตโค้ดรอบถัดไป
+
+```bash
+cd ~/Meter && git pull && bun install && bun run db:migrate && bun run build && sudo systemctl restart meter
+```
+
+---
+
+## หนี้ที่ยังค้าง (อย่าลืมก่อนใช้งานจริง)
+
+| | ticket |
+|---|---|
+| 🔴 **Postgres อยู่บน SD** — ไฟดับกลางคันอาจ corrupt ; ยอมรับไว้โดยแลกกับต้องมี backup นอกเครื่อง (D-006) | **T-010** |
+| ยังไม่มี user/password + ACL บน broker — ใครอยู่ใน LAN ก็ publish ค่ามั่วเข้ามาได้ | **T-008** |
+| ยังไม่มี retention — `readings` โตไปเรื่อย ๆ บน SD ที่เหลือ ~19GB | **T-009** |
+| ยังไม่มี watchdog ที่ restart ตาม `/api/health` — ตอนนี้ systemd restart เฉพาะตอน process ตายเท่านั้น ถ้าแอปยังอยู่แต่ DB ล่มค้าง จะไม่มีใคร restart ให้ | — |
+
+## แก้ปัญหาที่เจอบ่อย
+
+**`meter.service` ขึ้น `status=203/EXEC`** — หา `bun` ไม่เจอ · systemd ไม่อ่าน `~/.bashrc`
+ต้องใช้ path เต็มใน `ExecStart` (`/home/pi/.bun/bin/bun`) เช็คด้วย `which bun` ว่าตรงกันไหม
+
+**health ตอบ 503 ตลอด** — `DATABASE_URL` ใน `.env` ไม่ตรงกับรหัสผ่านที่ container ถูกสร้างมา
+เช็คด้วย `docker exec -it meter-postgres psql -U meter -d meter -c '\dt'`
+
+**edge จากเครื่องอื่นต่อ broker ไม่ได้** แต่บน Pi ต่อได้ — `docker port meter-mqtt` ต้องเป็น
+`0.0.0.0:1883` ไม่ใช่ `127.0.0.1:1883`
+
+**จอขึ้นแต่ไม่มีข้อมูล** — ดู `curl localhost:3000/api/health` ที่ `checks.ingest.received`
+ถ้าไม่ขยับ = ไม่มีใคร publish เข้ามา ; ถ้า `invalid` ขยับ = มีคนส่งแต่ผิดสัญญา ดู `journalctl -u meter`

@@ -6,6 +6,21 @@
 
 ---
 
+## T-007 ของสำหรับ deploy (ยังไม่ได้ขึ้น Pi จริง)  🟡  (T-007)
+- `deploy/docker-compose.yml` (postgres+mosquitto, `name: meter`), `deploy/meter.service`,
+  `deploy/kiosk/{kiosk-launch.sh,meter-kiosk.desktop}`, `docs/DEPLOYMENT.md` ครบขั้นตอน
+- port แยกเจตนาชัด: mosquitto `0.0.0.0:1883` (edge ต้องยิงเข้าจาก LAN) ·
+  postgres `127.0.0.1:5432` (ไม่มีเหตุผลให้เข้าถึงจาก LAN)
+- `kiosk-launch.sh` ตรวจสภาพเครื่องเองแทนการ hardcode — หา binary ของ chromium เอง
+  (ชื่อต่างกันตามรุ่น Pi OS) · รอ server ตอบก่อนเปิดจอ และ**รับทุก HTTP status ไม่ใช่แค่ 2xx**
+  เพราะ health ตอบ 503 ตอน DB ยังไม่ขึ้น ถ้ารอ 2xx จอจะดำค้างทั้งที่หน้าเว็บแสดง degraded ได้แล้ว
+  · ล้าง flag crash ของ Chromium ไม่ให้ติดแถบ "Restore pages?" คาจอ
+- verify (บนเครื่อง dev): ยกเลิก container ที่สร้างมือ แล้วขึ้นด้วย compose แทน →
+  `docker port` ถูกทั้งสองตัว · postgres healthy · migrate/seed/build ผ่าน ·
+  health `ok` · points 10/10 มีค่า · devices 3 ONLINE
+- ⚠️ **ยังไม่ได้พิสูจน์บน Pi** — ข้อ reboot แล้วจอขึ้นเอง และข้อยิง mock จากเครื่องอื่น
+  ต้องรันบนเครื่องจริง (ssh จาก shell ของ AI ไม่ผ่าน jump host)
+
 ## คู่มือให้ทีม AI ส่งข้อมูล  🟢  (2026-08-27)
 - `docs/PUBLISHING-GUIDE.md` — broker/topic/payload + โค้ด Python (paho-mqtt) พร้อมใช้
   + คำสั่ง `mosquitto_pub` ทดสอบ 30 วินาที + วิธีเช็คว่าข้อมูลเข้าจริงจาก `/api/health`

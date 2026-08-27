@@ -1,0 +1,49 @@
+# บริการพื้นฐานบน Pi — Postgres + Mosquitto
+#
+#   docker compose --env-file .env -f deploy/docker-compose.yml up -d   (รันจากรากโปรเจกต์)
+#
+# ตัวเว็บ/ingest ไม่ได้อยู่ในนี้ เพราะรันเป็น systemd service ตรง ๆ ด้วย Bun
+# (ดู deploy/meter.service) — แก้โค้ดแล้ว restart ได้ทันทีไม่ต้อง build image
+
+# ปักชื่อ project ไว้ ไม่งั้น compose ตั้งตามชื่อโฟลเดอร์ที่ไฟล์นี้อยู่ ("deploy")
+# แล้ว volume จะกลายเป็น deploy_pgdata ซึ่งหายากตอนไปตามหาทีหลัง
+name: meter
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: meter-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: meter
+      # ต้องตั้งใน .env — ตั้งใจให้ล้มตั้งแต่ตอน up ถ้าลืม ดีกว่าไปเจอรหัสผ่าน default บนเครื่องจริง
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ต้องตั้ง POSTGRES_PASSWORD ใน .env}
+      POSTGRES_DB: meter
+    ports:
+      # ผูก loopback เท่านั้น — DB ไม่มีเหตุผลให้เข้าถึงจาก LAN
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meter"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: meter-mqtt
+    restart: unless-stopped
+    ports:
+      # ⚠️ เปิดออก LAN โดยตั้งใจ — edge device อยู่คนละเครื่อง ต้องยิงเข้ามาได้
+      # ตอนนี้ยังเป็น anonymous (T-008 จะใส่ user/password + ACL)
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      # persistence ของ mosquitto ต้องมีที่เขียน ไม่งั้นคิว QoS 1 กับ retained
+      # จะหายไปพร้อม container ทุกครั้งที่ restart
+      - mqttdata:/mosquitto/data
+
+volumes:
+  pgdata:
+  mqttdata:

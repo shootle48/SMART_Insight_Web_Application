@@ -1,0 +1,32 @@
+# systemd unit สำหรับ Meter (ingest + API + เสิร์ฟหน้าเว็บ ใน process เดียว)
+#
+#   sudo cp deploy/meter.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now meter
+#
+# ถ้า user ไม่ใช่ `pi` หรือโปรเจกต์ไม่ได้อยู่ที่ /home/pi/Meter ต้องแก้ 4 บรรทัดข้างล่าง
+
+[Unit]
+Description=Meter — MQTT ingest + dashboard
+Documentation=file:///home/pi/Meter/docs/DEPLOYMENT.md
+# ไม่ใช้ Requires=docker.service เพราะไม่อยากให้แอปตายตามตอน docker restart
+# ตัวแอปทน DB/broker ล่มได้อยู่แล้ว (health ตอบ 503 และ mqtt ต่อใหม่เอง)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Meter
+EnvironmentFile=/home/pi/Meter/.env
+ExecStart=/home/pi/.bun/bin/bun src/server/index.ts
+
+# containers อาจยังไม่พร้อมตอนบูต — ให้ลองใหม่เรื่อย ๆ แทนที่จะยอมแพ้
+Restart=always
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=meter
+
+[Install]
+WantedBy=multi-user.target

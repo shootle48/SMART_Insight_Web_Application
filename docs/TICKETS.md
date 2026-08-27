@@ -21,14 +21,18 @@ scope:      cron/systemd timer รัน pg_dump + ส่งออกไปเ�
 done-when:  ลบ DB ทิ้งแล้ว restore จาก dump กลับมาได้ครบ (ไม่ใช่แค่มีไฟล์ dump)
 note:       backup ที่ไม่เคยทดสอบ restore ไม่นับว่าเป็น backup
 
-## T-007 [P2] deploy ขึ้น Pi 5 — todo
+## T-007 [P2] deploy ขึ้น Pi 5 — doing
 why:        แก้บนเครื่อง dev ไม่นับว่าเสร็จ
 scope:      docker-compose (postgres+mosquitto), systemd unit ของ Bun server,
             Chromium kiosk autostart, เขียน `docs/DEPLOYMENT.md`
 done-when:  reboot Pi แล้วจอขึ้น dashboard เองโดยไม่ต้องพิมพ์อะไร · edge (mock) จากอีกเครื่อง
             ยิงเข้ามาที่ Pi แล้วค่าขึ้นจอ
 files:      deploy/*, docs/DEPLOYMENT.md
-note:       Pi บูตจาก SD — ตัดสินใจเรื่องที่เก็บ Postgres (SD vs NVMe) ก่อนทำใบนี้
+note:       Pi บูตจาก SD — เคาะแล้วว่าอยู่บน SD ไปก่อน + pg_dump cron (D-006 → T-010)
+progress:   2026-08-27 เขียนไฟล์ครบและทดสอบ compose บนเครื่อง dev แล้ว (ports ถูก, migrate/seed/
+            build/health ผ่านครบ) · **ยังไม่ได้รันบน Pi จริง** — done-when ข้อ reboot กับข้อ
+            ยิงจากเครื่องอื่น ยังพิสูจน์ไม่ได้จนกว่าจะไปรันบนเครื่อง
+            เข้า ssh จาก shell ของ AI ไม่ได้ (key ไม่ผ่าน jump host) ต้องให้บิ๊กรันเอง
 
 ## T-008 [P3] auth + ACL — todo
 why:        ตอนนี้ broker เปิด anonymous ใครอยู่ใน LAN ก็ publish ปลอมได้
