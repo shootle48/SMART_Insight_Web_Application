@@ -2,6 +2,8 @@
 Type=Application
 Name=Meter Kiosk
 Comment=เปิด dashboard เต็มจอตอนเข้าเดสก์ท็อป
-Exec=/home/pi/Meter/deploy/kiosk/kiosk-launch.sh
+# เรียกผ่าน bash ตรง ๆ เพื่อไม่ต้องพึ่ง exec bit ของไฟล์
+# (git บน Windows ตั้ง core.filemode=false โหมดจึงหายได้ตอน pull/scp)
+Exec=/bin/bash /home/pi/Meter/deploy/kiosk/kiosk-launch.sh
 Terminal=false
 X-GNOME-Autostart-enabled=true

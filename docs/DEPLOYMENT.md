@@ -179,6 +179,13 @@ cd ~/Meter && git pull && bun install && bun run db:migrate && bun run build && 
 **edge จากเครื่องอื่นต่อ broker ไม่ได้** แต่บน Pi ต่อได้ — `docker port meter-mqtt` ต้องเป็น
 `0.0.0.0:1883` ไม่ใช่ `127.0.0.1:1883`
 
+**kiosk ขึ้น `permission denied` หลัง `git pull`** — exec bit ของ `kiosk-launch.sh` หาย
+เพราะ git บนเครื่อง dev (Windows) ตั้ง `core.filemode=false` จึง commit เป็น 100644
+`chmod +x` ที่ทำบน Pi จะถูกเขียนทับทุกครั้งที่ pull
+· แก้ถาวรแล้วด้วย `git update-index --chmod=+x` (โหมดใน repo เป็น 100755) และ `.desktop`
+เรียกผ่าน `/bin/bash` จึงไม่ต้องพึ่ง exec bit อีก
+· เช็คโหมดที่ repo เก็บไว้: `git ls-files -s deploy/kiosk/kiosk-launch.sh`
+
 **kiosk เปิดได้แต่ไม่เต็มจอ** — เกิดจากใส่ `--app=<url>` คู่กับ `--kiosk`
 สองอันนี้ตีกัน (`--app` = หน้าต่างแอปขนาดปกติ) และบน Wayland ตัว `--app` ชนะ
 วิธีที่ถูกคือส่ง URL เป็น argument ธรรมดา **ห้ามใส่ `--app`**
