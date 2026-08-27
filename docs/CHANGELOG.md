@@ -6,6 +6,15 @@
 
 ---
 
+## MQTT ครบวงบน Pi 5  🟡  (2026-08-26)
+- `verify-contract 25` บน Pi ผ่าน 2 รอบ: 24 ข้อความ · parse ไม่ผ่าน 0 · ครบ 3 เครื่อง · status ONLINE
+- ✅ **graceful shutdown (Ctrl+C) ทำงานบน Linux จริง** → OFFLINE ครบ 3 (บน Windows ทดสอบไม่ได้)
+- ⚠️ เทสฆ่าดิบรอบแรก **สรุปไม่ได้** — Ctrl+C ไปแล้วก่อน `pkill` จึงไม่มี process ให้ฆ่า
+  และค่า OFFLINE ที่เห็นคือ retained ที่ค้างจากรอบก่อน ไม่ใช่ LWT ที่เพิ่งยิง → ต้องเทสใหม่แบบคุมลำดับ
+- กับดักที่เจอระหว่างตั้ง broker (บันทึกใน HANDOFF): mosquitto จาก apt จองพอร์ต 1883 อยู่ก่อน ·
+  container ที่ `run` ล้มตอน setup network จะไม่มี port mapping แม้ `start` ได้ · `ss` ตรวจพอร์ต Docker ไม่ได้
+- verify: ดูผลจริงข้างบน ; ที่ยังค้าง = LWT บน Pi
+
 ## ขึ้น Pi 5 ครั้งแรก — scaffold รันบนเครื่องจริงได้  🟡  (2026-08-26)
 - ลง Docker 29.7.2 (arm64) + Bun 1.4.0 บน Pi · clone repo ไว้ที่ `~/Meter` · รัน `meter-mqtt` container
 - ✅ **`bun run build` บน Pi = 178ms** (dev Windows 186ms) → ยืนยัน D-001/D-003 บนฮาร์ดแวร์เป้าหมาย

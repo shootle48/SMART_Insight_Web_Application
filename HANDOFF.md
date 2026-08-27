@@ -88,6 +88,14 @@
 - **retained message ไม่ตายตามคนส่ง** — edge ตายแล้วค่าเก่ายังค้างบน broker ; UI ต้องเช็คอายุ
   `captured_at` เอง และ mock ต้องล้าง retained ตอนปิด ไม่งั้นคนถัดไปเห็นเลขเก่าโดยไม่รู้ตัว
 - **`ifconfig` บน Debian 13** ไม่มีติดมาแล้ว ใช้ `hostname -I` หรือ `ip -4 addr` แทน
+- 🔴 **Pi เครื่องนี้มี mosquitto จาก apt จองพอร์ต 1883 อยู่ก่อนแล้ว** (`active`+`enabled`, bind แค่
+  loopback จึงใช้กับ edge ไม่ได้) → `docker run -p 1883:1883` ล้มด้วย `address already in use`
+  แก้แล้วด้วย `sudo systemctl disable --now mosquitto` (คืนสภาพ: `enable --now`)
+- 🔴 **`docker run` ที่ล้มตอน setup network จะทิ้ง container ที่ "Up" ได้แต่ไม่มี port mapping**
+  `docker start` ซ้ำไม่ช่วย — ต้อง `docker rm -f` แล้ว `run` ใหม่ ; อาการคือ `Connection refused`
+  ทั้งที่ container ขึ้นและ log ปกติ
+- **อย่าใช้ `ss -lptn` ตรวจพอร์ตของ Docker รุ่นใหม่** — forward ผ่าน netfilter ไม่มี process listen
+  บนโฮสต์ `ss` จึงว่างทั้งที่พอร์ตใช้ได้ **ให้ดู `docker port <name>` แทน**
 - **terminal บนเดสก์ท็อป Pi เป็น non-login shell** → อ่าน `~/.bashrc` ไม่อ่าน `~/.profile`
   (SSH เป็น login shell อ่านทั้งคู่) ; ลงอะไรที่เติม PATH แล้วยังหาไม่เจอ = หน้าต่างนั้นเปิดค้างมาก่อน
   แก้ด้วย `source ~/.bashrc` หรือเปิดหน้าต่างใหม่ — อย่าไปเติมซ้ำใน `.profile`
