@@ -6,6 +6,20 @@
 
 ---
 
+## T-003 DB schema + migration  🟢  (T-003)
+- 3 ตาราง: `devices` (status มาจาก LWT แยกจาก heartbeat) · `points` (fixture เป็น jsonb และ
+  **nullable** เพื่อให้ ingest สร้างจุดที่ยังไม่รู้จักได้ ไม่ต้องทิ้งค่าที่อ่านมาแล้ว) · `readings`
+- `readings` เก็บ `captured_at` (นาฬิกา edge) คู่กับ `received_at` (นาฬิกาเรา) เสมอ — ถ้าเก็บอันเดียว
+  แล้วเวลาเพี้ยนจะไม่มีทางรู้ว่าเพี้ยนที่ใคร (OPEN-5) · index: btree (point_id, captured_at DESC) + BRIN
+- **ยังไม่ partition** ต่างจากที่ D-002 วางไว้ — เหตุผลใน D-007 (partition ที่ไม่มีงานสร้างล่วงหน้า
+  จะทำให้ INSERT พังตอนขึ้นเดือนใหม่ = ข้อมูลหายบนเครื่องที่ไม่มีคนเฝ้า) → เปิด T-009/T-010 แทน
+- ย้ายรายการจุดวัดจาก `scripts/mock-edge-publisher.ts` ไป `src/db/dev-inventory.ts` ให้ seed กับ mock
+  ใช้แหล่งเดียวกัน — เดิมจะกลายเป็น parallel structure แล้วเพี้ยนจนดูเหมือนบั๊กของ ingest
+- verify: `db:migrate` ผ่านบน Postgres เปล่า · `db:seed` รันซ้ำได้ (devices=3 points=10 ไม่เพิ่ม) ·
+  `smoke-db` ผ่าน 9/9 — จุดสำคัญคือ **UNREADABLE เก็บเป็น null ไม่ใช่ 0**, ค่านอกสเกล (0.2 บนสเกล
+  0..0.099) เก็บได้ไม่ถูก reject, ทศนิยม 10 หลักไม่ถูกปัด, และ FK ปฏิเสธ point ที่ไม่รู้จัก
+  (สัญญาที่ T-004 ต้องรับมือ: สร้าง point ก่อนแล้วค่อยเขียน reading)
+
 ## MQTT ครบวงบน Pi 5  🟡  (2026-08-26)
 - `verify-contract 25` บน Pi ผ่าน 2 รอบ: 24 ข้อความ · parse ไม่ผ่าน 0 · ครบ 3 เครื่อง · status ONLINE
 - ✅ **graceful shutdown (Ctrl+C) ทำงานบน Linux จริง** → OFFLINE ครบ 3 (บน Windows ทดสอบไม่ได้)

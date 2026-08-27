@@ -27,7 +27,11 @@ bun install
 bun run dev            # server (Hono) + web (Vite) พร้อมกัน
 bun run mock-edge      # จำลอง edge 3 ตัวยิง MQTT เข้ามา
 bun run build          # ออก dist/ สำหรับ deploy
-bun test               # unit test
+
+bun run db:migrate     # สร้าง/อัปเดตตาราง
+bun run db:seed        # ใส่เครื่อง+จุดวัดตั้งต้น (รันซ้ำได้)
+bun run smoke-db       # พิสูจน์พฤติกรรม schema (null/นอกสเกล/FK)
+bun run verify-contract 25   # พิสูจน์ว่า mock ยิงตรงสัญญา (ต้องรัน mock-edge คู่กัน)
 ```
 
 ## โครงสร้างสำคัญ (ที่เหลือดู docs/ARCHITECTURE.md)
@@ -35,7 +39,7 @@ bun test               # unit test
 | path | หน้าที่ |
 |---|---|
 | `src/contract/` | **สัญญากับทีม AI** — Zod + topic map ; จุดเดียวที่นิยาม message ที่รับเข้ามา |
-| `src/db/` | Drizzle schema + connection + migration |
+| `src/db/` | Drizzle schema + connection + migration + `dev-inventory.ts` (รายการจุดวัด ใช้ร่วมกับ mock) |
 | `src/server/ingest/` | MQTT subscriber → validate → เขียน DB (อยู่ process เดียวกับ API) |
 | `src/server/api/` | Hono routes + SSE ส่งค่าสดขึ้นหน้าเว็บ |
 | `src/web/` | React dashboard (Vite) |

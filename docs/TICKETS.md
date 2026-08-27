@@ -6,15 +6,20 @@
 
 # Active
 
-## T-003 [P1] DB schema + migration — todo
-why:        ต้องมีที่เก็บก่อน ingest จะเขียนได้
-scope:      ตาราง `devices`, `points` (config หน้าปัด), `readings` (time-series),
-            partition รายเดือน + BRIN บน `captured_at` ; seed จุดวัดของ mock
-done-when:  `bun run db:migrate` ผ่านบน Postgres เปล่า + `db:seed` ซ้ำได้ไม่พัง (idempotent)
-            + insert แถวที่ `quality=UNREADABLE` แล้ว value เป็น null ได้จริง
-files:      src/db/schema.ts, src/db/index.ts, src/db/seed.ts, drizzle.config.ts
-note:       สัญญายังไม่นิ่ง → `readings` ออกแบบให้ยืดหยุ่น (value_num/value_text แยกคอลัมน์)
-            ตั้งใจแลก type safety กับความง่ายในการรื้อ
+## T-009 [P2] partition ตาราง readings + retention — todo
+why:        SD 19GB มีจำกัด ต้องลบข้อมูลเก่าได้เร็วโดยตารางไม่บวม (D-007 เลื่อนมาจาก D-002)
+scope:      แปลง readings เป็น partitioned by range (captured_at) รายเดือน + งานสร้าง partition
+            ล่วงหน้า + DEFAULT partition กันข้อมูลหาย + policy ลบตามอายุ
+done-when:  ข้ามเดือนแล้ว INSERT ยังผ่าน (ทดสอบด้วยการ insert วันที่เดือนหน้า) ·
+            DROP partition เก่าแล้วพื้นที่คืนจริง
+note:       ทำก่อน production ; ต้องรู้อัตรายิงจริงจากทีม AI ก่อนถึงจะตั้ง retention ได้
+
+## T-010 [P2] pg_dump cron ออกนอกเครื่อง — todo
+why:        D-006 ยอมให้ Postgres อยู่บน SD โดยแลกกับต้องมี backup นอกเครื่อง
+            ถ้าไม่ทำ = ยอมรับความเสี่ยงเปล่า ๆ
+scope:      cron/systemd timer รัน pg_dump + ส่งออกไปเครื่องอื่น + ทดสอบ restore จริง
+done-when:  ลบ DB ทิ้งแล้ว restore จาก dump กลับมาได้ครบ (ไม่ใช่แค่มีไฟล์ dump)
+note:       backup ที่ไม่เคยทดสอบ restore ไม่นับว่าเป็น backup
 
 ## T-004 [P1] ingest: MQTT → validate → DB — todo
 why:        หัวใจของระบบ ข้อมูลต้องลงถังให้ได้ก่อนคิดเรื่องแสดงผล
@@ -84,5 +89,18 @@ files:      package.json, tsconfig.json, vite.config.ts, src/server/index.ts, sr
 done: 2026-08-25 Hono + Vite/React รันได้ทั้งโหมด dev และ prod ;
       ระหว่างทำเจอ 2 เรื่อง: app.notFound() ของ Hono เป็น global ทำให้ /api/* ที่ไม่มีจริง
       คืน HTML 200 (แก้แล้ว) และ Bun script shell ไม่รองรับ `&` จึงต้องใช้ concurrently
+
+## T-003 [P1] DB schema + migration — done
+why:        ต้องมีที่เก็บก่อน ingest จะเขียนได้
+scope:      ตาราง `devices`, `points` (config หน้าปัด), `readings` (time-series),
+            partition รายเดือน + BRIN บน `captured_at` ; seed จุดวัดของ mock
+done-when:  `bun run db:migrate` ผ่านบน Postgres เปล่า + `db:seed` ซ้ำได้ไม่พัง (idempotent)
+            + insert แถวที่ `quality=UNREADABLE` แล้ว value เป็น null ได้จริง
+files:      src/db/schema.ts, src/db/index.ts, src/db/seed.ts, drizzle.config.ts
+note:       สัญญายังไม่นิ่ง → `readings` ออกแบบให้ยืดหยุ่น (value_num/value_text แยกคอลัมน์)
+            ตั้งใจแลก type safety กับความง่ายในการรื้อ
+done: 2026-08-26 3 ตาราง + BRIN + seed idempotent + smoke test 9 ข้อผ่าน ;
+      เบี่ยงจากแผน: ยังไม่ partition (D-007 → T-009) ; ย้ายรายการจุดวัดไป
+      src/db/dev-inventory.ts ให้ seed กับ mock ใช้ร่วมกัน กัน parallel structure
 
 <!-- ย้ายใบที่ done มาไว้นี่ทั้งใบ + เติมบรรทัด `done: YYYY-MM-DD <สรุป 1 บรรทัด>` -->

@@ -11,11 +11,18 @@
     "start": "bun src/server/index.ts",
     "mock-edge": "bun run scripts/mock-edge-publisher.ts",
     "verify-contract": "bun run scripts/verify-contract.ts",
-    "type-check": "bunx tsc --noEmit"
+    "type-check": "bunx tsc --noEmit",
+    "db:generate": "bunx drizzle-kit generate",
+    "db:migrate": "bun run src/db/migrate.ts",
+    "db:seed": "bun run src/db/seed.ts",
+    "db:studio": "bunx drizzle-kit studio",
+    "smoke-db": "bun run scripts/smoke-db.ts"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.13.5",
     "mqtt": "^5.15.2",
+    "postgres": "^3.4.9",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zod": "^4.3.6"
@@ -26,6 +33,7 @@
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.0",
     "concurrently": "^10.0.5",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^5.9.3",
     "vite": "^8.2.2"
   }
