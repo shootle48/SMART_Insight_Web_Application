@@ -17,7 +17,7 @@ log() { echo "[$(date '+%F %T')] $*" >>"$LOG"; }
 log "เริ่ม kiosk → $URL  (WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-ว่าง} DISPLAY=${DISPLAY:-ว่าง})"
 
 # autostart อาจถูกเรียกซ้ำ (เคยเจอ 2 รอบห่างกัน 30 วินาที) — กันหน้าต่างซ้อนกัน
-if pgrep -af chromium 2>/dev/null | grep -q -- "--app=${URL}"; then
+if pgrep -af chromium 2>/dev/null | grep -e "--kiosk" | grep -q -- "${URL}"; then
   log "kiosk เปิดอยู่แล้ว ไม่เปิดซ้ำ"
   exit 0
 fi
@@ -69,11 +69,11 @@ done
 exec "$BIN" \
   $OZONE \
   --kiosk \
-  --app="$URL" \
   --noerrdialogs \
   --disable-infobars \
   --disable-session-crashed-bubble \
   --disable-features=TranslateUI \
   --check-for-update-interval=31536000 \
   --autoplay-policy=no-user-gesture-required \
+  "$URL" \
   >>"$LOG" 2>&1

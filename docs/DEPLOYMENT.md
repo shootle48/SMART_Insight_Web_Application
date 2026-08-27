@@ -179,6 +179,10 @@ cd ~/Meter && git pull && bun install && bun run db:migrate && bun run build && 
 **edge จากเครื่องอื่นต่อ broker ไม่ได้** แต่บน Pi ต่อได้ — `docker port meter-mqtt` ต้องเป็น
 `0.0.0.0:1883` ไม่ใช่ `127.0.0.1:1883`
 
+**kiosk เปิดได้แต่ไม่เต็มจอ** — เกิดจากใส่ `--app=<url>` คู่กับ `--kiosk`
+สองอันนี้ตีกัน (`--app` = หน้าต่างแอปขนาดปกติ) และบน Wayland ตัว `--app` ชนะ
+วิธีที่ถูกคือส่ง URL เป็น argument ธรรมดา **ห้ามใส่ `--app`**
+
 **kiosk ตายด้วย `Missing X server or $DISPLAY`** — chromium เลือก backend เป็น X11
 ทั้งที่ session เป็น Wayland (labwc) · สคริปต์ตรวจ `WAYLAND_DISPLAY` แล้วใส่ `--ozone-platform`
 ให้เองแล้ว ถ้ายังเจอ แปลว่า env ตอน autostart ไม่มีตัวแปรนั้น — ดูบรรทัดแรกของ `~/meter-kiosk.log`
