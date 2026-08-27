@@ -6,6 +6,17 @@
 
 ---
 
+## purge-dev-seed — ล้างข้อมูล dev ให้เหลือแต่ของจริง  🟡  (2026-08-27)
+- ทีม AI เริ่ม publish ของจริงเข้า Pi แล้ว (`invalid: 0` — payload ผ่านสัญญาหมด และตั้ง
+  `device_status` ถูกด้วย) แต่เขาใช้ `device_id = edge-01` ซึ่ง**ชนกับ seed ของเรา**
+  ข้อมูลจริงกับข้อมูลปลอมจึงอยู่ใต้เครื่องเดียวกัน
+- `scripts/purge-dev-seed.ts` ลบ **ตามรายชื่อ point_id ของ seed เท่านั้น** ไม่ลบตาม device_id
+  เพราะ `DELETE FROM devices WHERE device_id='edge-01'` จะ cascade กวาดข้อมูลจริงไปด้วยทั้งหมด
+  · default เป็น dry-run ต้องใส่ `--yes` ถึงลบจริง
+- verify: จำลองจุดของเพื่อน (`pt-friend-real` ใต้ edge-01) แล้วรัน `--yes` →
+  ลบ seed 10 ตัวพร้อม readings ที่ผูกอยู่ · **`edge-01` ถูกเก็บไว้เพราะยังมีจุดจริง** (ล้างแค่ชื่อปลอม) ·
+  edge-02/03 ที่ไม่เหลือจุดวัดถูกลบ · จุดของเพื่อนกับ reading รอดครบ → คืนสภาพ dev ด้วย db:seed
+
 ## T-007 ของสำหรับ deploy (ยังไม่ได้ขึ้น Pi จริง)  🟡  (T-007)
 - `deploy/docker-compose.yml` (postgres+mosquitto, `name: meter`), `deploy/meter.service`,
   `deploy/kiosk/{kiosk-launch.sh,meter-kiosk.desktop}`, `docs/DEPLOYMENT.md` ครบขั้นตอน
