@@ -48,6 +48,7 @@ bun run verify-contract 25   # พิสูจน์ว่า mock ยิงต�
 
 ## เปิดเมื่อเกี่ยวข้อง (อย่าโหลดถ้าไม่ใช้)
 
+- **ทีม AI จะส่งข้อมูลเข้ามา → ส่ง `docs/PUBLISHING-GUIDE.md` ให้เขาอ่าน**
 - **เริ่ม session ใหม่ → `HANDOFF.md` ก่อนเสมอ** (สถานะเครื่อง · ของค้าง · คำถามค้างกับทีม AI · กับดัก)
 - ออกแบบ/แก้โครงสร้าง → `docs/ARCHITECTURE.md`
 - จะเริ่มงานใหม่/ดู backlog → `docs/TICKETS.md`

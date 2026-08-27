@@ -21,7 +21,8 @@
 **T-001 + T-002 เสร็จแล้ว** — scaffold รันได้ทั้ง dev/prod และมีสัญญา MQTT + mock + verify ที่ผ่านจริง
 · ใบถัดไปคือ **T-003 DB schema + migration** (ต้องสร้าง container postgres ก่อน)
 
-▶ **เอา `src/contract/` ไปให้ทีม AI ดูได้เลย** — ท้าย `messages.ts` มี OPEN-1..7 เป็นรายการที่เราเดาเอง
+▶ **ส่ง `docs/PUBLISHING-GUIDE.md` ให้ทีม AI** — คู่มือ publish พร้อมโค้ด Python ใช้ได้เลย
+  (ทดสอบคำสั่งในคู่มือกับระบบจริงแล้ว) · ท้าย `src/contract/messages.ts` มี OPEN-1..7 ที่ยังต้องให้เขาเคาะ
 
 ### เครื่อง dev (Windows, เครื่องที่กำลังนั่งอยู่)
 | | |
