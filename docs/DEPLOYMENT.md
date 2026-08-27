@@ -169,6 +169,26 @@ cd ~/Meter && git pull && bun install && bun run db:migrate && bun run build && 
 
 ---
 
+## ดูข้อมูลใน DB บน Pi
+
+สรุปแบบอ่านง่าย (อ่านอย่างเดียว ไม่แก้อะไร):
+```bash
+cd ~/Meter && bun run db-peek
+```
+
+เข้า psql ตรง ๆ ถ้าต้องการ query เอง:
+```bash
+docker exec -it meter-postgres psql -U meter -d meter
+```
+
+เปิด Drizzle Studio (หน้าเว็บ) — ต้อง `--host 0.0.0.0` ถึงจะเปิดจากเครื่องอื่นได้
+เพราะ default bind แค่ loopback:
+```bash
+cd ~/Meter && bunx drizzle-kit studio --host 0.0.0.0 --port 4983
+```
+แล้วเปิด `https://local.drizzle.studio/?port=4983&host=smsn-pi-office-01.local`
+⚠️ อย่าเปิดค้างไว้ — ไม่มี auth ใครในวง LAN ก็แก้ DB ได้
+
 ## หนี้ที่ยังค้าง (อย่าลืมก่อนใช้งานจริง)
 
 | | ticket |

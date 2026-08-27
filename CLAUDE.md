@@ -30,6 +30,7 @@ bun run build          # ออก dist/ สำหรับ deploy
 
 bun run db:migrate     # สร้าง/อัปเดตตาราง
 bun run db:seed        # ใส่เครื่อง+จุดวัดตั้งต้น (รันซ้ำได้)
+bun run db-peek        # ส่องว่าใน DB มีอะไรอยู่ (อ่านอย่างเดียว)
 bun run smoke-db       # พิสูจน์พฤติกรรม schema (null/นอกสเกล/FK)
 bun run verify-contract 25   # พิสูจน์ว่า mock ยิงตรงสัญญา (ต้องรัน mock-edge คู่กัน)
 ```

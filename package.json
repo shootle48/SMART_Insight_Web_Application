@@ -18,7 +18,8 @@
     "db:studio": "bunx drizzle-kit studio",
     "smoke-db": "bun run scripts/smoke-db.ts",
     "smoke-ingest": "bun run scripts/smoke-ingest.ts",
-    "purge-dev-seed": "bun run scripts/purge-dev-seed.ts"
+    "purge-dev-seed": "bun run scripts/purge-dev-seed.ts",
+    "db-peek": "bun run scripts/db-peek.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
