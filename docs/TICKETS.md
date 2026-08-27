@@ -21,15 +21,6 @@ scope:      cron/systemd timer รัน pg_dump + ส่งออกไปเ�
 done-when:  ลบ DB ทิ้งแล้ว restore จาก dump กลับมาได้ครบ (ไม่ใช่แค่มีไฟล์ dump)
 note:       backup ที่ไม่เคยทดสอบ restore ไม่นับว่าเป็น backup
 
-## T-004 [P1] ingest: MQTT → validate → DB — todo
-why:        หัวใจของระบบ ข้อมูลต้องลงถังให้ได้ก่อนคิดเรื่องแสดงผล
-scope:      subscribe `meter/+/+` (clean:false, QoS 1), Zod validate, เขียน Postgres,
-            emit ค่าสดผ่าน EventEmitter ; ข้อความ parse ไม่ผ่าน → log + ทิ้ง ห้ามทำทั้ง process ตาย
-done-when:  รัน mock 60 วินาที แล้ว `SELECT count(*)` ตรงกับจำนวนที่ publish จริง ·
-            แถว UNREADABLE เก็บเป็น null ไม่ใช่ 0 · ยิง JSON เสียเข้าไป process ยังอยู่
-files:      src/server/ingest/*
-note:       เก็บ `received_at` ของฝั่งเราคู่กับ `captured_at` ของ edge เสมอ
-
 ## T-005 [P1] API + SSE — todo
 why:        หน้าเว็บต้องมีทางดึงค่าล่าสุด/ประวัติ และรับค่าสด
 scope:      Hono: `GET /api/points` (ค่าล่าสุดทุกจุด), `GET /api/points/:id/history?range=`,
@@ -102,5 +93,17 @@ note:       สัญญายังไม่นิ่ง → `readings` ออ�
 done: 2026-08-26 3 ตาราง + BRIN + seed idempotent + smoke test 9 ข้อผ่าน ;
       เบี่ยงจากแผน: ยังไม่ partition (D-007 → T-009) ; ย้ายรายการจุดวัดไป
       src/db/dev-inventory.ts ให้ seed กับ mock ใช้ร่วมกัน กัน parallel structure
+
+## T-004 [P1] ingest: MQTT → validate → DB — done
+why:        หัวใจของระบบ ข้อมูลต้องลงถังให้ได้ก่อนคิดเรื่องแสดงผล
+scope:      subscribe `meter/+/+` (clean:false, QoS 1), Zod validate, เขียน Postgres,
+            emit ค่าสดผ่าน EventEmitter ; ข้อความ parse ไม่ผ่าน → log + ทิ้ง ห้ามทำทั้ง process ตาย
+done-when:  รัน mock 60 วินาที แล้ว `SELECT count(*)` ตรงกับจำนวนที่ publish จริง ·
+            แถว UNREADABLE เก็บเป็น null ไม่ใช่ 0 · ยิง JSON เสียเข้าไป process ยังอยู่
+files:      src/server/ingest/*
+note:       เก็บ `received_at` ของฝั่งเราคู่กับ `captured_at` ของ edge เสมอ
+done: 2026-08-26 ingest อยู่ใน process เดียวกับ Hono · smoke-ingest ผ่าน 12/12 ·
+      เพิ่ม unique (point_id, frame_id) ทำให้ idempotent (D-008) เพราะ QoS 1 + retained
+      ส่งซ้ำได้ตามสเปก · จุดวัด/เครื่องที่ไม่รู้จักถูกสร้างให้ (enabled=false) ไม่ทิ้งข้อมูล
 
 <!-- ย้ายใบที่ done มาไว้นี่ทั้งใบ + เติมบรรทัด `done: YYYY-MM-DD <สรุป 1 บรรทัด>` -->

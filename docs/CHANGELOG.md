@@ -6,6 +6,24 @@
 
 ---
 
+## T-004 ingest: MQTT → validate → DB  🟡  (T-004)
+- `src/server/ingest/index.ts` อยู่ใน process เดียวกับ Hono (D-001) · `src/server/events.ts` ส่งค่าสด
+  ต่อให้ SSE ผ่าน EventEmitter (ห่อไว้ เผื่อวันหนึ่งต้องเปลี่ยนเป็น LISTEN/NOTIFY โดยฝั่งเรียกไม่ต้องแก้)
+- **ทำให้ idempotent** — เพิ่ม unique (point_id, frame_id) + ON CONFLICT DO NOTHING (D-008)
+  เพราะ QoS 1 = at-least-once และ retained frame ถูกส่งกลับมาทุกครั้งที่ subscribe ใหม่
+  ถ้าไม่ทำ จำนวนแถวจะเกินจริงเงียบ ๆ และกราฟจะมีจุดซ้อนที่เวลาเดียวกัน
+- **จุดวัด/เครื่องที่ไม่รู้จัก → สร้างให้เลย (`enabled=false`, `fixture=null`)** ไม่ทิ้งข้อความ
+  ทิ้งไปคือค่าที่ AI อ่านมาได้แล้วหายเพราะ config ฝั่งเรายังไม่ตรง ซึ่งกู้คืนไม่ได้
+- `clientId` ของ ingest คงที่ (`meter-ingest`) ไม่ผูกกับ pid — ไม่งั้น `clean:false` ไร้ความหมาย
+  เพราะ broker จะเห็นเป็น client คนละตัวทุกครั้งที่ restart แล้วทิ้งคิวเดิม
+- `/api/health` ตรวจ Postgres จริงและ **ตอบ 503 เมื่อ DB ล่ม** (เดิม TODO ค้างไว้จาก T-001) +
+  โชว์ stats ของ ingest (received/invalid/inserted/duplicate)
+- verify: `smoke-ingest` ผ่าน 12/12 — auto-create device/point · ส่งซ้ำไม่เพิ่มแถว ·
+  UNREADABLE เป็น null · ข้อความเสีย 3 แบบ (JSON พัง / ผิดสัญญา / device_id ไม่ตรง topic)
+  ไม่ทำ process ตาย และข้อมูลดีที่ตามมายังเข้าได้
+- 🔴 พบระหว่างทาง: **VS Code Remote-SSH forward พอร์ต 1883 ไป Pi** ทำให้เทสที่คิดว่ารันในเครื่อง
+  จริง ๆ ต่อไป broker บน Pi (บันทึกใน HANDOFF) — ผลเทสยังใช้ได้ แต่ dev env ต้องแก้ให้ตรงเอกสาร
+
 ## T-003 DB schema + migration  🟢  (T-003)
 - 3 ตาราง: `devices` (status มาจาก LWT แยกจาก heartbeat) · `points` (fixture เป็น jsonb และ
   **nullable** เพื่อให้ ingest สร้างจุดที่ยังไม่รู้จักได้ ไม่ต้องทิ้งค่าที่อ่านมาแล้ว) · `readings`

@@ -16,6 +16,7 @@ import {
   real,
   bigserial,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type { PointFixture } from "../contract/points";
 
@@ -103,6 +104,12 @@ export const readings = pgTable(
   (t) => [
     // ใช้ตอบ "ค่าล่าสุดของจุดนี้" และ "ย้อนหลังช่วงเวลา" ซึ่งเป็น query หลักของ dashboard
     index("readings_point_time_idx").on(t.point_id, t.captured_at.desc()),
+
+    // ทำให้การเขียนซ้ำไม่เพิ่มแถว — จำเป็นเพราะสองเหตุผลที่เลี่ยงไม่ได้:
+    //   1. MQTT QoS 1 คือ at-least-once ตามสเปก broker ส่งซ้ำได้
+    //   2. เฟรมล่าสุด publish แบบ retained → ทุกครั้งที่ ingest subscribe ใหม่จะได้ของเก่ากลับมา
+    // ถ้าไม่มีข้อนี้ จำนวนแถวจะเกินจริงแบบเงียบ ๆ และกราฟจะมีจุดซ้อนกันที่เวลาเดียวกัน
+    uniqueIndex("readings_point_frame_uq").on(t.point_id, t.frame_id),
 
     // BRIN แทน btree บน captured_at ล้วน: ข้อมูลเข้ามาเรียงตามเวลาอยู่แล้ว
     // BRIN จึงเล็กกว่า btree หลายสิบเท่า ซึ่งสำคัญเมื่ออยู่บน SD card ที่มีจำกัด (D-006)

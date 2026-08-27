@@ -4,23 +4,41 @@
 // (app.request() ของ Hono เรียกตรงได้เลย)
 
 import { Hono } from "hono";
+import { sql as drizzleSql } from "drizzle-orm";
+import { db } from "../../db/index";
+import { ingestStats } from "../ingest/index";
 
 const startedAt = Date.now();
 
 export const api = new Hono();
 
-// ใช้เช็คว่า server ยังอยู่ — kiosk/systemd/คนดูแลเครื่องเรียกตัวนี้
+// ใช้เช็คว่าระบบยังทำงานได้จริง — systemd/kiosk/คนดูแลเครื่องเรียกตัวนี้
 //
-// ตอนนี้ตอบแค่ว่า process ยังหายใจ ยังไม่ได้ตรวจ DB หรือ MQTT เพราะยังไม่มี
-// พอ T-003/T-004 เสร็จต้องกลับมาเติม แล้วให้ตอบ 503 เมื่อ dependency ล่ม
-// ไม่งั้น health ที่ตอบ 200 เสมอจะกลายเป็นคำโกหกที่ทำให้ restart อัตโนมัติไม่ทำงาน
-api.get("/health", (c) =>
-  c.json({
-    status: "ok",
-    uptime_seconds: Math.floor((Date.now() - startedAt) / 1000),
-    checks: {
-      // TODO(T-003): postgres
-      // TODO(T-004): mqtt
+// ⚠️ ต้องตอบ 503 เมื่อ dependency ล่ม ไม่ใช่ 200 เสมอ
+// health ที่ตอบ 200 ตลอดคือคำโกหกที่ทำให้ระบบ restart อัตโนมัติไม่ทำงานตอนของจริงพัง
+api.get("/health", async (c) => {
+  let dbOk = false;
+  let dbError: string | undefined;
+  try {
+    await db.execute(drizzleSql`select 1`);
+    dbOk = true;
+  } catch (e) {
+    dbError = e instanceof Error ? e.message : String(e);
+  }
+
+  const ingest = ingestStats();
+
+  return c.json(
+    {
+      status: dbOk ? "ok" : "degraded",
+      uptime_seconds: Math.floor((Date.now() - startedAt) / 1000),
+      checks: {
+        postgres: dbOk ? { ok: true } : { ok: false, error: dbError },
+        // ingest ไม่มี ok/ไม่ ok ตายตัว — ตัวเลขบอกได้ดีกว่าว่ากำลังรับของอยู่ไหม
+        // received ไม่ขยับ = broker เงียบหรือหลุด ; invalid พุ่ง = สัญญาไม่ตรงกับที่ edge ส่ง
+        ingest,
+      },
     },
-  }),
-);
+    dbOk ? 200 : 503,
+  );
+});

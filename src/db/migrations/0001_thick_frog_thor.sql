@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "readings_point_frame_uq" ON "readings" USING btree ("point_id","frame_id");
