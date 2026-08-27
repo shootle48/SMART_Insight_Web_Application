@@ -7,6 +7,9 @@ import { Hono } from "hono";
 import { sql as drizzleSql } from "drizzle-orm";
 import { db } from "../../db/index";
 import { ingestStats } from "../ingest/index";
+import { pointsApi } from "./points";
+import { devicesApi } from "./devices";
+import { streamApi, sseClientCount } from "./stream";
 
 const startedAt = Date.now();
 
@@ -37,8 +40,14 @@ api.get("/health", async (c) => {
         // ingest ไม่มี ok/ไม่ ok ตายตัว — ตัวเลขบอกได้ดีกว่าว่ากำลังรับของอยู่ไหม
         // received ไม่ขยับ = broker เงียบหรือหลุด ; invalid พุ่ง = สัญญาไม่ตรงกับที่ edge ส่ง
         ingest,
+        // จอที่ต่อ SSE อยู่ ; ถ้าเลขนี้ไม่ลดหลังปิดจอ = listener รั่ว
+        sse_clients: sseClientCount(),
       },
     },
     dbOk ? 200 : 503,
   );
 });
+
+api.route("/points", pointsApi);
+api.route("/devices", devicesApi);
+api.route("/stream", streamApi);

@@ -88,10 +88,13 @@
 - **retained message ไม่ตายตามคนส่ง** — edge ตายแล้วค่าเก่ายังค้างบน broker ; UI ต้องเช็คอายุ
   `captured_at` เอง และ mock ต้องล้าง retained ตอนปิด ไม่งั้นคนถัดไปเห็นเลขเก่าโดยไม่รู้ตัว
 - **`ifconfig` บน Debian 13** ไม่มีติดมาแล้ว ใช้ `hostname -I` หรือ `ip -4 addr` แทน
-- 🔴 **VS Code Remote-SSH forward พอร์ต 1883 จาก Windows ไป Pi** — `localhost:1883` บนเครื่อง dev
-  อาจไม่ใช่ broker ในเครื่อง แต่ทะลุไปหา Pi ทำให้ mock ที่รันบน dev ยิงข้อมูลปลอมเข้าเครื่องจริง
-  เช็คด้วย `Get-NetTCPConnection -LocalPort 1883 -State Listen` ถ้า process เป็น `Code` = โดนอุโมงค์
-  (ปิดที่แท็บ PORTS ใน VS Code) ; ตัวจริงต้องเป็น `com.docker.backend`
+- 🔴 **VS Code หน้าต่างที่ต่อ Pi จะ auto-forward พอร์ตของ Pi มาโผล่ที่เครื่อง dev เอง**
+  (`Origin: Auto Forwarded`) ทำให้ `localhost:<port>` บนเครื่อง dev อาจเป็นของ Pi โดยไม่มีใครสั่ง
+  ถ้าเลขเดิมถูกใช้อยู่แล้ว มันจะหลบไปเลขถัดไปเงียบ ๆ — เคยเจอ Pi:1883→dev:1884, Pi:3000→dev:3001
+  · เช็คที่แท็บ **PORTS** ของหน้าต่างที่ต่อ Pi (หน้าต่าง local จะว่างเสมอ อย่าดูผิดหน้าต่าง)
+  · ปิดถาวรด้วย `"remote.autoForwardPorts": false`
+  · ⚠️ อันตรายเมื่อ Pi ต่อสายการผลิตจริง: รัน mock บน dev แล้วข้อมูลปลอมจะวิ่งเข้าเครื่องจริง
+  · **ห้ามใช้ `Stop-Process -Force` กับ PID ที่เจอจาก port** — เคยฆ่า process ของ VS Code มาแล้ว
 - 🔴 **Pi เครื่องนี้มี mosquitto จาก apt จองพอร์ต 1883 อยู่ก่อนแล้ว** (`active`+`enabled`, bind แค่
   loopback จึงใช้กับ edge ไม่ได้) → `docker run -p 1883:1883` ล้มด้วย `address already in use`
   แก้แล้วด้วย `sudo systemctl disable --now mosquitto` (คืนสภาพ: `enable --now`)

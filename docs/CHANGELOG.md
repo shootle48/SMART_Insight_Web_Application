@@ -6,6 +6,25 @@
 
 ---
 
+## T-005 API + SSE  🟢  (T-005)
+- `GET /api/points` — ใช้ **LEFT JOIN LATERAL ... LIMIT 1** ไม่ใช่ join ธรรมดา เพราะจุดที่ยังไม่เคย
+  มีค่าเลย (ingest เพิ่งสร้าง / กล้องเพิ่งเสีย) ต้องยังโผล่บนจอ ถ้าหายไปเงียบ ๆ คนดูจะไม่รู้ว่ามีจุด
+  ที่ไม่ส่งค่ามา ซึ่งเป็นข้อมูลสำคัญที่สุด · LATERAL วิ่งเข้า index (point_id, captured_at DESC) ตรง ๆ
+- `GET /api/points/:id/history?range=15m|6h|7d` — **รวมเป็น bucket** (~240 จุด/กราฟ) คืน
+  avg/min/max + จำนวน UNREADABLE/UNCERTAIN ต่อ bucket
+  · ไม่คืนแถวดิบแล้ว cap เพราะการ cap จะทำให้กราฟโชว์แค่ช่วงท้ายของ range โดยคนดูนึกว่าเห็นครบ
+  · คืน min/max ด้วยไม่ใช่แค่ avg เพราะค่าพุ่งชั่วขณะจะถูกเฉลี่ยกลบ
+  · range ผิดรูปแบบหรือเกิน 30d → 400 (กันสแกนทั้งตารางบน Pi)
+- `GET /api/devices` — `status` (จาก LWT) คู่กับ `last_frame_at` เพราะสองอันจับคนละอาการ:
+  เครื่องตาย vs เครื่องยังต่ออยู่แต่ AI หยุดอ่าน
+- `GET /api/stream` — SSE (ไม่ใช่ WebSocket เพราะข้อมูลไหลทางเดียวและ SSE ต่อใหม่เองเมื่อสายหลุด
+  ซึ่งสำคัญกับจอ kiosk ที่ไม่มีคนกด refresh) + keepalive 15s + คิวกันลำดับสลับ
+- เพิ่ม `sse_clients` ใน `/api/health` — ใช้ดูว่ามีกี่จอต่ออยู่ และเป็นตัวจับ listener รั่ว
+- verify: mock 3 เครื่อง 10 จุดยิงจริง → `/api/devices` 3 เครื่อง ONLINE · `/api/points` 10 จุดครบ
+  · history range=15m ได้ 9 bucket (bucket_seconds=3) · range=99y และ 60d ได้ 400 ·
+  SSE 14 วิ ได้ hello + readings 6 ครั้ง (เห็นค่านอกสเกล 16.6 บนสเกล -5..15 ไหลผ่านด้วย) ·
+  **sse_clients 0 → 2 → 0** พิสูจน์ว่า listener ถูกถอดจริง
+
 ## T-004 ingest: MQTT → validate → DB  🟡  (T-004)
 - `src/server/ingest/index.ts` อยู่ใน process เดียวกับ Hono (D-001) · `src/server/events.ts` ส่งค่าสด
   ต่อให้ SSE ผ่าน EventEmitter (ห่อไว้ เผื่อวันหนึ่งต้องเปลี่ยนเป็น LISTEN/NOTIFY โดยฝั่งเรียกไม่ต้องแก้)
