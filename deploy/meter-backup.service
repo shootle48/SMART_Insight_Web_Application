@@ -1,0 +1,19 @@
+# สำรอง Postgres วันละครั้ง — เรียกโดย meter-backup.timer
+#
+#   sudo cp deploy/meter-backup.{service,timer} /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now meter-backup.timer
+
+[Unit]
+Description=Meter — สำรอง Postgres
+# ต้องมี docker ก่อน ไม่งั้น pg_dump ผ่าน docker exec จะล้มทันที
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/home/pi/Meter
+ExecStart=/bin/bash /home/pi/Meter/deploy/backup.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=meter-backup

@@ -189,11 +189,59 @@ cd ~/Meter && bunx drizzle-kit studio --host 0.0.0.0 --port 4983
 แล้วเปิด `https://local.drizzle.studio/?port=4983&host=smsn-pi-office-01.local`
 ⚠️ อย่าเปิดค้างไว้ — ไม่มี auth ใครในวง LAN ก็แก้ DB ได้
 
+## สำรองข้อมูล (T-010)
+
+ตั้งครั้งเดียว:
+```bash
+sudo cp ~/Meter/deploy/meter-backup.service ~/Meter/deploy/meter-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now meter-backup.timer
+systemctl list-timers meter-backup --no-pager
+```
+
+สำรองเดี๋ยวนี้เลย (ไม่ต้องรอตี 3):
+```bash
+~/Meter/deploy/backup.sh
+```
+
+**พิสูจน์ว่า dump ใช้ได้จริง — ทำอย่างน้อยเดือนละครั้ง:**
+```bash
+~/Meter/deploy/restore-test.sh
+```
+restore เข้า database ชั่วคราวแล้วลบทิ้ง **ไม่แตะข้อมูลจริง** จึงรันได้แม้ระบบกำลังทำงาน
+· ตรวจทั้งจำนวนแถวและ index (restore ที่ได้ข้อมูลแต่ไม่มี index จะกลับมาแล้วช้าจนใช้ไม่ได้)
+
+> เลือกวิธีนี้แทนการ "ลบ DB จริงแล้ว restore" ตามที่ ticket เขียนไว้ตอนแรก โดยตั้งใจ —
+> วิธีเดิมพิสูจน์ได้จริงแต่ทำได้ครั้งเดียวและเสี่ยงเกินไปกับเครื่องที่มีข้อมูลจริงอยู่
+> วิธีนี้พิสูจน์เรื่องเดียวกันแต่รันซ้ำได้ทุกเดือน
+
+### 🔴 ต้องตั้ง `BACKUP_REMOTE` ไม่งั้น backup แทบไม่มีค่า
+
+ถ้าไม่ตั้ง ไฟล์ dump จะอยู่บน **SD ใบเดียวกับ DB** ซึ่งกันได้แค่ "ลบผิด"
+ไม่ได้กัน "การ์ดพัง/ไฟดับจน corrupt" ที่เป็นความเสี่ยงหลักของเครื่องนี้ (D-006)
+
+เพิ่มใน `~/Meter/.env`:
+```
+BACKUP_REMOTE=user@ปลายทาง:/path/backup/meter/
+```
+ต้องตั้ง SSH key ให้ `pi` เข้าปลายทางได้โดยไม่ถามรหัสผ่าน (systemd ตอบ prompt ไม่ได้):
+```bash
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519   # ถ้ายังไม่มี
+ssh-copy-id user@ปลายทาง
+ssh user@ปลายทาง 'echo ok'                          # ต้องผ่านโดยไม่ถามอะไร
+```
+
+เช็คสถานะ backup ได้จาก health — ดู `checks.backup`:
+```bash
+curl -s localhost:3000/api/health | python3 -m json.tool | grep -A9 '"backup"'
+```
+`ok:false` = ไม่มีไฟล์ หรือไฟล์ล่าสุดเก่าเกิน 36 ชม. (timer อาจหยุดทำงาน)
+· `offsite:false` = **ยังไม่ได้ตั้ง `BACKUP_REMOTE`**
+
 ## หนี้ที่ยังค้าง (อย่าลืมก่อนใช้งานจริง)
 
 | | ticket |
 |---|---|
-| 🔴 **Postgres อยู่บน SD** — ไฟดับกลางคันอาจ corrupt ; ยอมรับไว้โดยแลกกับต้องมี backup นอกเครื่อง (D-006) | **T-010** |
+| 🔴 **Postgres อยู่บน SD** (D-006) — มี pg_dump + restore-test แล้ว แต่ **ยังไม่ได้ตั้ง `BACKUP_REMOTE`** ไฟล์จึงอยู่บน SD ใบเดียวกับ DB | **T-010** |
 | ยังไม่มี user/password + ACL บน broker — ใครอยู่ใน LAN ก็ publish ค่ามั่วเข้ามาได้ | **T-008** |
 | ~~ยังไม่มี retention~~ ✅ ทำแล้ว — throttle ที่ ingest + ลบข้อมูลเก่ากว่า 30 วัน (D-012) ; ดูขนาดปัจจุบันจาก `/api/health` ที่ `checks.storage` | T-009 done |
 | 🔴 **wayvnc เปิด `*:5900` ไม่มี auth** — เปิดไว้ช่วง dev ต้องปิดก่อนเครื่องเข้าโรงงาน | **T-008** |

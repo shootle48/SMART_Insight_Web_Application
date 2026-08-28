@@ -11,6 +11,7 @@ import { pointsApi } from "./points";
 import { devicesApi } from "./devices";
 import { streamApi, sseClientCount } from "./stream";
 import { retentionStatus, readingsFootprint } from "../retention";
+import { backupStatus } from "../backup-status";
 
 const startedAt = Date.now();
 
@@ -54,6 +55,8 @@ api.get("/health", async (c) => {
         // จอที่ต่อ SSE อยู่ ; ถ้าเลขนี้ไม่ลดหลังปิดจอ = listener รั่ว
         sse_clients: sseClientCount(),
         storage,
+        // backup ที่หยุดทำงานเงียบ ๆ จะรู้ตัวตอนสายเกินไป — ต้องเห็นจากที่เดียวกับสุขภาพระบบ
+        backup: await backupStatus(),
       },
     },
     dbOk ? 200 : 503,
