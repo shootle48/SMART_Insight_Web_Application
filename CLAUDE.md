@@ -15,7 +15,7 @@
   ผ่าน MQTT → เก็บลง DB → แสดงบนจอ kiosk ให้ฝ่ายผลิตดูสด ๆ
 - **Target:** Raspberry Pi 5 8GB · Debian 13 (trixie) aarch64 · **บูตจาก SD 29GB** (เหลือ ~19GB)
   ทำหน้าที่ทั้ง server และจอ kiosk ในตัวเดียว
-- **ต้นทางข้อมูล:** edge device 3 ตัว (ทีม AI) — **สัญญายังไม่เคาะ** ดู `src/contract/`
+- **ต้นทางข้อมูล:** edge device ของทีม AI — สัญญาใช้งานจริงแล้ว (`invalid`=0) ดู `src/contract/`
   งาน OCR/gauge ต้นทางอยู่ที่ `../` (`gauge_bench.py`, `bench/samples.json`)
 - **Stack:** Bun · Hono · Vite + React 19 · TypeScript · Drizzle + Postgres 17 · MQTT.js + Mosquitto 2 · กราฟเขียน SVG เอง (D-009)
 - **สถานะ:** รันบน Pi 5 หน้างานแล้ว (systemd + kiosk) · ทีม AI เริ่มส่งข้อมูลจริงเข้ามาแล้ว
@@ -62,7 +62,7 @@ bun run verify-contract 25   # พิสูจน์ว่า mock ยิงต�
 ## เปิดเมื่อเกี่ยวข้อง (อย่าโหลดถ้าไม่ใช้)
 
 - **ทีม AI จะส่งข้อมูลเข้ามา → ส่ง `docs/PUBLISHING-GUIDE.md` ให้เขาอ่าน**
-- **เรื่องส่งภาพ snapshot → `docs/SNAPSHOT-PROPOSAL.md`** (ข้อเสนอ ยังไม่เคาะ)
+- **เรื่องส่งภาพ snapshot → `docs/SNAPSHOT-PROPOSAL.md`** (เคาะแล้ว: MQTT topic แยก · D-013)
 - **เริ่ม session ใหม่ → `HANDOFF.md` ก่อนเสมอ** (สถานะเครื่อง · ของค้าง · คำถามค้างกับทีม AI · กับดัก)
 - ออกแบบ/แก้โครงสร้าง → `docs/ARCHITECTURE.md`
 - จะเริ่มงานใหม่/ดู backlog → `docs/TICKETS.md`
