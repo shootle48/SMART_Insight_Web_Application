@@ -13,7 +13,7 @@ import {
   type LiveDevice,
   type LiveReading,
   type PointRow,
-} from "./api";
+} from "./apiClient";
 
 /** เก็บย้อนหลังต่อจุดไว้เท่านี้ — พอสำหรับ sparkline และมีเพดานชัดเจน */
 const SPARK_LIMIT = 120;

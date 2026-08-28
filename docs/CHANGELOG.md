@@ -6,6 +6,16 @@
 
 ---
 
+## fix: หน้าขาวตอน dev — ชื่อไฟล์ชนกับ prefix ของ proxy  🟢  (2026-08-27)
+- อาการ: `bun run dev:all` ขึ้นครบทุก process ไม่มี error ใน terminal เลย แต่ `localhost:5173` ขาวเปล่า
+- ต้นตอ: ไฟล์ `src/web/api.ts` ถูกขอเป็น `/api.ts` ซึ่ง**ตรงกับ prefix `/api`** ที่ Vite proxy
+  ส่งต่อไป Hono → ได้ 404 JSON แทนตัวไฟล์ → import พัง → React ไม่ render อะไรเลย
+- **พังเฉพาะโหมด dev** ตอน build รวมเป็น bundle เดียวจึงไม่เคยขอไฟล์นี้ผ่าน HTTP
+  ทำให้ตอนทดสอบที่ port 3000 (prod build) ผ่านมาตลอด — เป็นเหตุผลว่าทำไมถึงไม่เจอตอน redesign
+- แก้สองชั้น: เปลี่ยนชื่อเป็น `apiClient.ts` และรัด proxy จาก `"/api"` เป็น `"^/api/"`
+  (ชั้นหลังกันปัญหาทั้งตระกูล เช่น `/api-utils.ts` ในอนาคต)
+- verify: โหลด `localhost:5173` ใหม่ → 10 การ์ด · 3 เครื่อง · SSE เชื่อมต่อ · ค่าไหลปกติ
+
 ## คำสั่งลัดสำหรับเทสบนเครื่อง dev  🟢  (2026-08-27)
 - `stack:up` / `stack:down` / `stack:status` — จัดการ container ผ่าน compose ชุดเดียวกับที่ใช้บน Pi
   (ไม่ให้ dev กับ prod ใช้คนละวิธีขึ้น container)

@@ -1,6 +1,6 @@
 // แถบสถานะเครื่อง edge ด้านบนจอ
 
-import type { DeviceRow } from "../api";
+import type { DeviceRow } from "../apiClient";
 import { ageLabel, isStale } from "../time";
 
 export function DeviceBar({ devices, now }: { devices: DeviceRow[]; now: number }) {

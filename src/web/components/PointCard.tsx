@@ -9,7 +9,7 @@
 //   อ่านไม่ออก   — **ไม่แสดงตัวเลขใด ๆ** เพราะ 0 คือค่าที่อ่านได้จริงในเกือบทุกสเกล
 //   ค่าเก่า/ตาย  — หรี่ทั้งใบ + บอกอายุ ไม่ให้เข้าใจผิดว่ากำลังดูค่าปัจจุบัน
 
-import type { PointRow } from "../api";
+import type { PointRow } from "../apiClient";
 import type { SparkPoint } from "../useLiveData";
 import { Gauge } from "./Gauge";
 import { Sparkline } from "./Sparkline";
