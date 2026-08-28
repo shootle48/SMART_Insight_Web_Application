@@ -1,6 +1,6 @@
 # HANDOFF — Meter (อ่านก่อนเริ่ม session ใหม่)
 
-> อัปเดตล่าสุด **2026-08-25**
+> อัปเดตล่าสุด **2026-08-28**
 >
 > ไฟล์นี้เก็บเฉพาะของที่ไฟล์อื่นไม่มี: **สถานะเครื่อง ณ ตอนนี้ · ของค้างกลางมือ ·
 > คำถามค้างกับทีม AI · กับดักที่เจอมาแล้ว**
@@ -16,10 +16,48 @@
 
 ---
 
-## สถานะ ณ 2026-08-25
+## สถานะ ณ 2026-08-28 (ก่อนพักยาว — กลับมาทำต่อวันจันทร์)
 
-**T-001 + T-002 เสร็จแล้ว** — scaffold รันได้ทั้ง dev/prod และมีสัญญา MQTT + mock + verify ที่ผ่านจริง
-· ใบถัดไปคือ **T-003 DB schema + migration** (ต้องสร้าง container postgres ก่อน)
+**T-001…T-007 · T-009 · T-012 เสร็จแล้ว** — ระบบรันจริงบน Pi 5 (systemd + kiosk autostart)
+รับข้อมูลจริงจาก edge ของทีม AI อยู่ · git `main` @ `066c256`
+
+**ค้างอยู่**
+- **T-010 backup** = `doing` — สคริปต์ + timer + restore-test ทำครบและทดสอบผ่านแล้ว
+  เหลือแค่ยังไม่มีปลายทาง `BACKUP_REMOTE` (ผู้ใช้บอก "ยังไม่มี ปล่อยไว้ก่อน")
+  → API `/api/health` จะขึ้น `warning` ว่าไม่มีสำเนานอกเครื่อง ซึ่ง**ตั้งใจให้ขึ้น** อย่าไปปิด
+- **T-011 snapshot** = บล็อก รอทีม AI ทำฝั่ง publish (เคาะทางแล้ว: MQTT topic แยก · D-013)
+- **T-008 auth** = ยังไม่แตะ — broker `allow_anonymous` + wayvnc เปิด `*:5900` ไม่มีรหัส
+  จงใจเปิดไว้ตอน dev · 🔴 **ต้องปิดทั้งคู่ก่อนเข้าโรงงานจริง**
+- **T-012 ยังไม่ได้ deploy ขึ้น Pi** — commit แล้วแต่ยังไม่ได้ pull
+  `git pull && bun install && bun run build && sudo systemctl restart meter && ~/Meter/deploy/kiosk/kiosk-restart.sh`
+
+### ▶ ของที่รอ "คนอื่น" ตอบ (หยิบขึ้นมาถามได้เลยวันจันทร์)
+
+**1. รอทีมภายในเคาะเรื่องหน้าตา** — ผู้ใช้เอา mock ไปถามทีม (2026-08-28)
+`docs/mock/theme-mock.html` — ไฟล์เดียวจบ เปิดจาก `file://` ได้ ไม่ต้องต่อเน็ต
+สลับเทียบได้ 4 คู่: **ธีมมืด (ของจริงตอนนี้) / ธีมสว่าง (ref ใหม่)** × **การ์ดเดิม / การ์ดใหม่**
+มาจาก zip `stitch_high_visibility_industrial_dashboard` ที่ออกแบบมาให้อ่านง่ายบนจอโรงงาน
+- คำถามที่ต้องได้คำตอบ → **เอาธีมไหน** และ **เอาการ์ดแบบใหม่ทั้งชุดหรือบางส่วน**
+- ยังไม่ได้แตะ `src/` เลย — ตอบแล้วค่อยเปิดตั๋ว
+- เอาไปดูบนจอ Pi จริงได้ (นั่นคือจุดประสงค์): `scp docs/mock/theme-mock.html smsn@smsn-pi-office-01.local:~/` แล้ว `chromium ~/theme-mock.html`
+
+**2. รอทีม AI** — ดู 🔴 หัวข้อคำถามด้านล่าง (สเกล `pt-gauge-01` ยังบล็อกการวาดเกจอยู่)
+
+### สิ่งที่รู้แล้วจากการทำ mock (อย่าลืมตอนลงมือจริง)
+
+🔴 **ถ้าเปลี่ยนไปธีมสว่าง จะเปลี่ยนแค่ชุดสีไม่ได้** — ตอนนี้ "ค่าเก่า/ออฟไลน์" สื่อสารด้วย
+`opacity: .55` อย่างเดียว ซึ่งได้ผลบนพื้นมืดเพราะการ์ด**จมหายไปในพื้น** แต่บนพื้นขาว
+การ์ดยังขาวอยู่ แค่ตัวหนังสือจาง → ตาอ่านว่า "ปกติแต่เบลอ" ไม่ใช่ "เชื่อไม่ได้"
+mock แก้ด้วยการเติม**ขอบประ** ซึ่งอ่านออกทั้งสองธีม
+
+⚠️ **สีสถานะชุดปัจจุบันใช้กับพื้นขาวไม่ได้** — `--uncertain:#ffba20` บนขาวแทบมองไม่เห็น
+ต้องมีชุดเข้มแยกต่างหาก (mock ใช้ `#8a5000`) · และ ref เองก็ขัดกันเอง: frontmatter ให้เขียว
+`#006e2a` แต่ prose เขียน `#00C853` ซึ่ง contrast บนขาวได้แค่ ~2.2:1 (ต่ำกว่าเกณฑ์ 4.5:1) — **ใช้ตัว frontmatter**
+
+❌ **ที่ตัดทิ้งจาก ref แล้ว อย่าเผลอเอากลับมา** — ปุ่ม **Emergency Stop** (ระบบเราอ่านอย่างเดียว
+ไม่มีเส้นทางไปสั่งเครื่องจักร ปุ่มที่ดูคุมได้แต่คุมไม่ได้อันตรายกว่าไม่มีปุ่ม) ·
+**Manual Override / Acknowledge / Flag as Error** (สื่อว่ามีการเขียนกลับ ซึ่งยังไม่มีและถ้าจะมี
+ต้องมี audit trail) · เมนู sidebar ที่กดแล้วไม่ไปไหน
 
 ▶ **ส่ง `docs/PUBLISHING-GUIDE.md` ให้ทีม AI** — คู่มือ publish พร้อมโค้ด Python ใช้ได้เลย
   (ทดสอบคำสั่งในคู่มือกับระบบจริงแล้ว) · ท้าย `src/contract/messages.ts` มี OPEN-1..7 ที่ยังต้องให้เขาเคาะ
@@ -30,14 +68,16 @@
 | Bun | ✅ v1.4.0 อยู่ใน PATH |
 | Docker Desktop | ✅ เปิดแล้ว v29.7.2 |
 | container `meter-mqtt` | ✅ `eclipse-mosquitto:2` -p 127.0.0.1:1883 mount `deploy/mosquitto.conf` |
-| container postgres | ❌ ยังไม่ได้สร้าง (รอ T-003) |
-| git ในโฟลเดอร์นี้ | ✅ `main` @ 690eb32 · remote `origin` = github.com/shootle48/SMART_Insight_Web_Application |
+| container postgres | ✅ สร้างแล้ว — ขึ้นพร้อมกันด้วย `bun run stack:up` (compose `name: meter`) |
+| git ในโฟลเดอร์นี้ | ✅ `main` @ 066c256 · remote `origin` = github.com/shootle48/SMART_Insight_Web_Application |
+| ⚠️ Docker Desktop | Windows ปิดเองเวลาเครื่อง idle/restart — เปิดก่อนเสมอ ไม่งั้น `stack:up` ล้ม |
 
 ### Pi 5 (เครื่องเป้าหมายจริง)
 | | |
 |---|---|
 | สเปก | Pi 5 Model B Rev 1.1 · RAM 7.9GB · Debian 13 trixie · aarch64 · `graphical.target` |
-| storage | 🔴 **บูตจาก SD 29GB เหลือ 19GB** — ยังไม่ตัดสินใจว่าจะวาง Postgres ไว้ไหน (ดู T-007) |
+| storage | **บูตจาก SD 29GB** — เคาะแล้วว่า Postgres อยู่บน SD (D-006) + throttle ที่ ingest (D-012) + retention (T-009) ; backup ด้วย `pg_dump` ผ่าน systemd timer |
+| service | ✅ `meter.service` (systemd) + kiosk autostart ผ่าน `.desktop` เรียก `/bin/bash kiosk-launch.sh` |
 | docker | ✅ 29.7.2 `linux/arm64` · user `pi` อยู่ใน group `docker` แล้ว |
 | bun | ✅ 1.4.0 ที่ `~/.bun/bin/bun` |
 | node | ❌ ไม่ได้ลง และ**ไม่ต้องลง** — Bun แทนทั้งหมด |

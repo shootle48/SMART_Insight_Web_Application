@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="th" data-theme="dark" data-cards="new">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mock ธีม + การ์ด — SMART Insight</title>
+<style>
+/* ================= โทนมืด = ของที่รันอยู่จริงตอนนี้ (Liquid Industrial) ================= */
+:root[data-theme="dark"] {
+  --bg:#0b0e11; --bg-top:#111417;
+  --surface:rgba(255,255,255,.03); --surface-hi:rgba(255,255,255,.055);
+  --line:rgba(255,255,255,.12);
+  --text:#e1e2e7; --muted:#8d9aa3; --dim:#6b7780;
+  --ok:#00ffc2; --uncertain:#ffba20; --over:#ff9d3d; --bad:#ffb4ab; --dead:#5d6a72;
+  --on-banner:#0b0e11;
+  --blob-op:.14;
+  --track:rgba(255,255,255,.10);
+}
+/* ============ โทนสว่าง = จาก ref High-Visibility (ใช้ palette ชุด frontmatter) ============ */
+:root[data-theme="light"] {
+  --bg:#f4f5f5; --bg-top:#ffffff;
+  --surface:#ffffff; --surface-hi:#eceeee;
+  --line:#d5d8d8;
+  --text:#1a1c1c; --muted:#5a5f5f; --dim:#747878;
+  --ok:#006e2a; --uncertain:#8a5000; --over:#a03c00; --bad:#ba1a1a; --dead:#8b9090;
+  --on-banner:#ffffff;
+  --blob-op:0;
+  --track:rgba(0,0,0,.10);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:"Segoe UI",system-ui,-apple-system,"Noto Sans Thai","Noto Sans",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.liquid-bg{position:fixed;inset:0;z-index:-1;overflow:hidden;
+  background:radial-gradient(circle at 50% 40%,var(--bg-top) 0%,var(--bg) 100%)}
+.blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:var(--blob-op)}
+.b1{width:620px;height:620px;background:#00ffc2;top:-160px;left:-200px}
+.b2{width:520px;height:520px;background:#006c50;bottom:-180px;right:-120px}
+
+/* ---------- แถบควบคุมของ mock (ไม่ใช่ส่วนของแอปจริง) ---------- */
+.mockbar{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:16px;align-items:center;
+  padding:10px 20px;background:var(--surface-hi);border-bottom:2px solid var(--line)}
+.mockbar b{font-size:12px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
+.seg{display:flex;border:2px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;padding:7px 14px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;
+  background:transparent;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--text);color:var(--bg)}
+.hint{font-size:12px;color:var(--dim);margin-left:auto}
+kbd{font-family:ui-monospace,monospace;border:1px solid var(--line);border-radius:4px;padding:0 5px}
+
+.app{padding:22px 28px 60px;max-width:1900px;margin:0 auto}
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px}
+.topbar h1{margin:0;font-size:30px;font-weight:700;letter-spacing:-.02em}
+.sub{margin:3px 0 0;color:var(--muted);font-size:13px}
+.conn{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok)}
+
+.grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+.mono{font-family:ui-monospace,"DejaVu Sans Mono","Cascadia Mono",monospace}
+
+/* ======================================================================
+   สไตล์ A — การ์ดแบบเดิมที่รันอยู่ (เงานุ่ม ขอบบาง 1px badge เล็กท้ายใบ)
+   ====================================================================== */
+[data-cards="old"] .card{
+  padding:0;border-radius:1.25rem;overflow:hidden;
+  background:var(--surface);border:1px solid var(--line);
+  box-shadow:0 8px 32px rgba(0,0,0,.28);
+}
+[data-cards="old"] .newonly{display:none}
+[data-cards="old"] .card-head h2{font-size:17px;font-weight:600}
+[data-cards="old"] .v-num{font-size:40px;font-weight:700}
+[data-cards="old"] .v-text{font-size:34px;font-weight:700}
+[data-cards="old"] .card.s-unreadable{border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+[data-cards="old"] .card.s-over{border-color:color-mix(in srgb,var(--over) 45%,transparent)}
+[data-cards="old"] .card.s-uncertain{border-color:color-mix(in srgb,var(--uncertain) 40%,transparent)}
+[data-cards="old"] .card.s-stale,[data-cards="old"] .card.s-offline,[data-cards="old"] .card.s-never{opacity:.55}
+
+/* ======================================================================
+   สไตล์ B — ตาม ref: ขอบหนาแทนเงา / แถบสถานะเต็มหัวการ์ด / confidence เป็นแถบ / เลขใหญ่
+   ====================================================================== */
+[data-cards="new"] .card{
+  padding:0;border-radius:.5rem;overflow:hidden;
+  background:var(--surface);border:2px solid var(--line);box-shadow:none;
+}
+[data-cards="new"] .oldonly{display:none}
+[data-cards="new"] .card-head h2{font-size:18px;font-weight:700}
+[data-cards="new"] .v-num{font-size:56px;font-weight:800;letter-spacing:-.03em;line-height:1}
+[data-cards="new"] .v-text{font-size:46px;font-weight:800;line-height:1}
+[data-cards="new"] .card.s-unreadable{border:4px solid var(--bad)}
+[data-cards="new"] .card.s-over{border:4px solid var(--over)}
+[data-cards="new"] .card.s-uncertain{border:4px solid var(--uncertain)}
+[data-cards="new"] .card.s-offline,[data-cards="new"] .card.s-stale{border:2px dashed var(--dead);opacity:.72}
+[data-cards="new"] .card.s-never{border:2px dashed var(--line);opacity:.6}
+
+.banner{display:none;padding:6px 16px;font-size:13px;font-weight:800;letter-spacing:.06em;
+  color:var(--on-banner)}
+[data-cards="new"] .card.s-unreadable .banner{display:block;background:var(--bad)}
+[data-cards="new"] .card.s-over .banner{display:block;background:var(--over)}
+[data-cards="new"] .card.s-uncertain .banner{display:block;background:var(--uncertain)}
+[data-cards="new"] .card.s-offline .banner{display:block;background:var(--dead)}
+[data-cards="new"] .card.s-stale .banner{display:block;background:var(--dead)}
+
+.card-inner{padding:14px 16px 12px}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.card-head h2{margin:0;letter-spacing:-.01em}
+.card-id{font-size:11px;color:var(--dim);white-space:nowrap}
+.card-body{display:flex;align-items:center;gap:14px;margin:12px 0 4px;min-height:66px}
+.v-num,.v-text{letter-spacing:-.02em}
+.v-unit{font-size:16px;color:var(--muted);margin-left:6px}
+.v-unreadable{font-size:26px;font-weight:700;color:var(--bad)}
+.v-none{font-size:20px;color:var(--dim)}
+
+.spark{width:100%;height:38px;display:block;margin-top:6px}
+.card-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;
+  margin-top:10px;font-size:12px;color:var(--dim)}
+.badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.b-bad{color:var(--bad)} .b-over{color:var(--over)}
+.b-unc{color:var(--uncertain)} .b-dead{color:var(--dead)}
+
+/* confidence เป็นแถบ — มีเฉพาะสไตล์ใหม่ */
+.conf{margin-top:10px}
+.conf-row{display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px}
+.conf-track{height:8px;border-radius:999px;background:var(--track);overflow:hidden}
+.conf-fill{display:block;height:100%;border-radius:999px}
+</style>
+</head>
+<body>
+<div class="liquid-bg"><div class="blob b1"></div><div class="blob b2"></div></div>
+
+<div class="mockbar">
+  <b>ธีม</b>
+  <div class="seg" id="segTheme">
+    <button data-v="dark" aria-pressed="true">มืด (ของจริงตอนนี้)</button>
+    <button data-v="light" aria-pressed="false">สว่าง (ref ใหม่)</button>
+  </div>
+  <b>การ์ด</b>
+  <div class="seg" id="segCards">
+    <button data-v="old" aria-pressed="false">แบบเดิม</button>
+    <button data-v="new" aria-pressed="true">แบบใหม่</button>
+  </div>
+  <span class="hint">กด <kbd>T</kbd> สลับธีม · <kbd>C</kbd> สลับการ์ด — mock เท่านั้น ยังไม่แตะโค้ดจริง</span>
+</div>
+
+<div class="app">
+  <div class="topbar">
+    <div>
+      <h1>SMART Insight — จุดวัดในสายผลิต</h1>
+      <p class="sub">8 จุด · 3 เครื่อง · อัปเดตล่าสุดเมื่อสักครู่</p>
+    </div>
+    <div class="conn"><i class="dot"></i> เชื่อมต่ออยู่</div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+var PTS = [
+  {id:"pt-a-boiler-pressure", label:"แรงดันหม้อไอน้ำ A", num:2.19,  unit:"bar",  min:0,    max:6,    conf:0.98, st:"ok",         age:"2 วิที่แล้ว"},
+  {id:"pt-a-header-pressure", label:"แรงดันเฮดเดอร์",    num:null,  unit:"bar",  min:0,    max:6,    conf:0.42, st:"unreadable", age:"3 วิที่แล้ว"},
+  {id:"pt-a-feed-temp",       label:"อุณหภูมิสายป้อน",   num:78.4,  unit:"°C",   min:0,    max:120,  conf:0.71, st:"uncertain",  age:"1 วิที่แล้ว"},
+  {id:"pt-b-flow",            label:"อัตราการไหล B",     num:6.55,  unit:"m³/h", min:0,    max:5,    conf:0.93, st:"over",       age:"4 วิที่แล้ว"},
+  {id:"pt-b-batch-counter",   label:"ตัวนับล็อต",        num:249713,unit:null,   min:null, max:null, conf:0.95, st:"ok",         age:"6 วิที่แล้ว"},
+  {id:"pt-a-run-lamp",        label:"สถานะเดินเครื่อง",  text:"OFF",unit:null,   min:null, max:null, conf:0.99, st:"ok",         age:"2 วิที่แล้ว"},
+  {id:"pt-b-drier-temp",      label:"อุณหภูมิเครื่องอบ", num:104.2, unit:"°C",   min:0,    max:150,  conf:0.90, st:"stale",      age:"8 นาทีที่แล้ว"},
+  {id:"pt-c-vacuum",          label:"สุญญากาศ C",        num:-0.62, unit:"bar",  min:-1,   max:0,    conf:0.88, st:"offline",    age:"12 นาทีที่แล้ว"},
+  {id:"pt-c-outlet-temp",     label:"อุณหภูมิทางออก C",  num:null,  unit:"°C",   min:null, max:null, conf:null, st:"never",      age:"ยังไม่เคยได้ค่า"}
+];
+var BANNER = {unreadable:"อ่านไม่ออก", over:"เกินสเกล", uncertain:"ไม่มั่นใจ", offline:"เครื่องออฟไลน์", stale:"ค่าเก่า"};
+var STCOLOR = {ok:"var(--ok)", uncertain:"var(--uncertain)", over:"var(--over)", unreadable:"var(--bad)",
+               offline:"var(--dead)", never:"var(--dead)", stale:"var(--dead)"};
+var BADGE = {unreadable:"อ่านไม่ออก", over:"เกินสเกล", uncertain:"ไม่มั่นใจ", offline:"เครื่องออฟไลน์",
+             stale:"ค่าเก่า", never:"ยังไม่ตั้งค่า"};
+var BADGECLS = {unreadable:"b-bad", over:"b-over", uncertain:"b-unc", offline:"b-dead", stale:"b-dead", never:"b-dead"};
+
+function spark(seed, st) {
+  if (st === "offline" || st === "never") {
+    return '<svg class="spark" viewBox="0 0 200 38" preserveAspectRatio="none"></svg>';
+  }
+  var d = "", n = 40, i, v, y;
+  for (i = 0; i < n; i++) {
+    v = Math.sin((i + seed) * 0.45) * 0.5 + Math.sin((i + seed) * 0.13) * 0.35;
+    y = 19 - v * 13;
+    d += (i ? "L" : "M") + (i / (n - 1) * 200).toFixed(1) + " " + y.toFixed(1) + " ";
+  }
+  return '<svg class="spark" viewBox="0 0 200 38" preserveAspectRatio="none"><path d="' + d +
+         '" fill="none" stroke="' + STCOLOR[st] + '" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>';
+}
+
+function gauge(p) {
+  if (p.min === null || p.text !== undefined) return "";
+  var R = 26, C = 2 * Math.PI * R;
+  var frac = p.num === null ? 0 : Math.max(0, Math.min(1, (p.num - p.min) / (p.max - p.min)));
+  var arc = p.num === null ? "" :
+    '<circle cx="33" cy="33" r="' + R + '" fill="none" stroke="' + STCOLOR[p.st] + '" stroke-width="7"' +
+    ' stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + (C * (1 - frac * 0.75)) +
+    '" transform="rotate(135 33 33)"/>';
+  return '<svg width="66" height="66" viewBox="0 0 66 66" style="flex:0 0 auto">' +
+         '<circle cx="33" cy="33" r="' + R + '" fill="none" stroke="var(--track)" stroke-width="7"' +
+         ' stroke-dasharray="' + (C * 0.75) + ' ' + C + '" transform="rotate(135 33 33)"/>' + arc + '</svg>';
+}
+
+function fmt(n) { return Number.isInteger(n) ? n.toLocaleString("en-US") : n.toFixed(2); }
+
+document.getElementById("grid").innerHTML = PTS.map(function (p, i) {
+  var value;
+  if (p.st === "never")            value = '<span class="v-none">ยังไม่มีค่า</span>';
+  else if (p.st === "unreadable")  value = '<span class="v-unreadable">อ่านไม่ออก</span>';
+  else if (p.text !== undefined)   value = '<span class="v-text mono">' + p.text + '</span>';
+  else value = '<span class="v-num mono">' + fmt(p.num) + '</span>' +
+               (p.unit ? '<span class="v-unit mono">' + p.unit + '</span>' : "");
+
+  var badge = BADGE[p.st] ? '<b class="badge ' + BADGECLS[p.st] + '">' + BADGE[p.st] + '</b>' : "";
+  var pct = p.conf === null ? null : Math.round(p.conf * 100);
+  var conf = pct === null ? "" :
+    '<div class="conf newonly"><div class="conf-row"><span>ความมั่นใจ</span>' +
+    '<span class="mono" style="color:' + STCOLOR[p.st] + '">' + pct + '%</span></div>' +
+    '<div class="conf-track"><i class="conf-fill" style="width:' + pct + '%;background:' + STCOLOR[p.st] + '"></i></div></div>';
+  var range = p.min !== null ? " · " + p.min + "–" + p.max + (p.unit ? " " + p.unit : "") : "";
+
+  return '<article class="card s-' + p.st + '">' +
+    '<div class="banner">' + (BANNER[p.st] || "") + '</div>' +
+    '<div class="card-inner">' +
+      '<header class="card-head"><h2>' + p.label + '</h2><span class="card-id mono">' + p.id + '</span></header>' +
+      '<div class="card-body">' + gauge(p) + '<div>' + value + '</div></div>' +
+      spark(i * 7, p.st) + conf +
+      '<footer class="card-foot"><span class="oldonly">' + badge + '</span>' +
+      '<span class="mono">' + p.age + range + '</span></footer>' +
+    '</div></article>';
+}).join("");
+
+function set(attr, val, seg) {
+  document.documentElement.setAttribute(attr, val);
+  var bs = seg.querySelectorAll("button"), i;
+  for (i = 0; i < bs.length; i++) bs[i].setAttribute("aria-pressed", String(bs[i].dataset.v === val));
+}
+var segT = document.getElementById("segTheme"), segC = document.getElementById("segCards");
+segT.onclick = function (e) { if (e.target.dataset.v) set("data-theme", e.target.dataset.v, segT); };
+segC.onclick = function (e) { if (e.target.dataset.v) set("data-cards", e.target.dataset.v, segC); };
+addEventListener("keydown", function (e) {
+  var k = e.key.toLowerCase();
+  if (k === "t") set("data-theme", document.documentElement.dataset.theme === "dark" ? "light" : "dark", segT);
+  if (k === "c") set("data-cards", document.documentElement.dataset.cards === "old" ? "new" : "old", segC);
+});
+</script>
+</body>
+</html>
