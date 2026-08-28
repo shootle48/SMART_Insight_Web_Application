@@ -45,6 +45,11 @@ export async function backupStatus() {
       dir: BACKUP_DIR,
       // ⚠️ ไฟล์อยู่บนเครื่องเดียวกับ DB หรือเปล่า — ตัวชี้ขาดว่า backup นี้กัน "การ์ดพัง" ได้ไหม
       offsite: Boolean(process.env.BACKUP_REMOTE),
+      // เขียนคำเตือนออกมาตรง ๆ ไม่ให้ต้องรู้ความหมายของ offsite ก่อนถึงจะเข้าใจ
+      // `ok:true` คู่กับ `offsite:false` อ่านผ่าน ๆ แล้วนึกว่าเรียบร้อยดี ทั้งที่ยังกันโหมดพังหลักไม่ได้
+      ...(process.env.BACKUP_REMOTE
+        ? {}
+        : { warning: "backup อยู่บน SD ใบเดียวกับ DB — กันได้แค่ลบผิด ไม่ได้กันการ์ดพัง (T-010)" }),
     };
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : String(e), dir: BACKUP_DIR };

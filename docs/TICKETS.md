@@ -6,12 +6,20 @@
 
 # Active
 
-## T-010 [P2] pg_dump cron ออกนอกเครื่อง — todo
+## T-010 [P2] pg_dump cron ออกนอกเครื่อง — doing
 why:        D-006 ยอมให้ Postgres อยู่บน SD โดยแลกกับต้องมี backup นอกเครื่อง
             ถ้าไม่ทำ = ยอมรับความเสี่ยงเปล่า ๆ
 scope:      cron/systemd timer รัน pg_dump + ส่งออกไปเครื่องอื่น + ทดสอบ restore จริง
 done-when:  ลบ DB ทิ้งแล้ว restore จาก dump กลับมาได้ครบ (ไม่ใช่แค่มีไฟล์ dump)
 note:       backup ที่ไม่เคยทดสอบ restore ไม่นับว่าเป็น backup
+progress:   2026-08-28 ทำแล้ว: `deploy/backup.sh` (pg_dump -Fc + rotation) ·
+            `deploy/restore-test.sh` (restore เข้า db ชั่วคราว ตรวจแถว+index ไม่แตะของจริง) ·
+            systemd timer ตี 3 (`Persistent=true`) · สถานะโผล่ใน `/api/health` ที่ `checks.backup`
+            ทดสอบบนเครื่อง dev ผ่านทั้งคู่
+🔴 ที่ยังขาด: **`BACKUP_REMOTE` ยังไม่ได้ตั้ง** เพราะยังไม่มีปลายทาง (เคาะ 2026-08-28 ว่าปล่อยไว้ก่อน)
+            ไฟล์ dump จึงอยู่บน SD ใบเดียวกับ DB = **กันได้แค่ "ลบผิด" ไม่ได้กัน "การ์ดพัง"**
+            ซึ่งเป็นเหตุผลทั้งหมดที่ D-006 ยอมให้ DB อยู่บน SD ตั้งแต่แรก
+            → ใบนี้ยังปิดไม่ได้จนกว่าจะมีปลายทาง ; health เตือนไว้ที่ `checks.backup.warning`
 
 ## T-008 [P3] auth + ACL — todo
 why:        ตอนนี้ broker เปิด anonymous ใครอยู่ใน LAN ก็ publish ปลอมได้
