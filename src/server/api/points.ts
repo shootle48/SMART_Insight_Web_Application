@@ -38,6 +38,41 @@ pointsApi.get("/", async (c) => {
   return c.json({ points: rows });
 });
 
+/**
+ * ประวัติย่อของ "ทุกจุด" ในคำขอเดียว — ใช้เติม sparkline ตอนโหลดหน้า
+ *
+ * เดิมหน้าเว็บยิง /points/:id/history ทีละจุด ซึ่ง 1 จุดไม่รู้สึกอะไร
+ * แต่โปรเจกต์นี้ขายเป็น package ต่อโรงงาน บางที่อาจมี 30-50 จุด
+ * = 50 requests พร้อมกันทุกครั้งที่ใครเปิดหน้า แต่ละอันทำ aggregation บน Pi
+ *
+ * ตัวนี้ทำครั้งเดียวด้วย GROUP BY (point_id, bucket) แล้วให้ฝั่ง client แยกเอง
+ */
+pointsApi.get("/history", async (c) => {
+  const rangeRaw = c.req.query("range") ?? "15m";
+  const rangeSec = parseRange(rangeRaw);
+  if (rangeSec === null) {
+    return c.json({ error: "range ไม่ถูกต้อง — ใช้รูปแบบ 15m / 6h / 7d และไม่เกิน 30d" }, 400);
+  }
+
+  // หยาบกว่าของรายจุดมาก (60 จุดพอสำหรับ sparkline กว้าง ~240px)
+  // ยิ่งจุดวัดเยอะ payload ยิ่งต้องเล็กต่อจุด
+  const bucketSec = Math.max(1, Math.floor(rangeSec / 60));
+
+  const rows = await db.execute(sql`
+    SELECT
+      point_id,
+      to_timestamp(floor(extract(epoch FROM captured_at) / ${bucketSec}) * ${bucketSec}) AS bucket,
+      avg(value_num) AS avg_value,
+      count(*) FILTER (WHERE quality = 'UNREADABLE')::int AS unreadable
+    FROM readings
+    WHERE captured_at >= now() - make_interval(secs => ${rangeSec})
+    GROUP BY 1, 2
+    ORDER BY 1, 2
+  `);
+
+  return c.json({ range: rangeRaw, bucket_seconds: bucketSec, rows });
+});
+
 /** แปลง "15m" / "6h" / "7d" เป็นวินาที ; คืน null ถ้ารูปแบบผิด */
 function parseRange(raw: string): number | null {
   const m = /^(\d+)([mhd])$/.exec(raw);

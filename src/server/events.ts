@@ -11,6 +11,14 @@ export type LiveReading = PointReading & {
   device_id: string;
   frame_id: string;
   captured_at: string;
+  /**
+   * เวลาที่ "เรา" รับข้อความนี้ — ต้องส่งไปด้วยเสมอ อย่าให้ฝั่ง client เดาเอง
+   *
+   * เคยพลาดมาแล้ว: ตอนแรกไม่ได้ส่ง ฝั่ง client จึงใช้ค่าจากตอนโหลดหน้าค้างไว้
+   * แล้วอัปเดตเฉพาะ captured_at ทำให้ "ส่วนต่างนาฬิกา" ถ่างขึ้นเรื่อย ๆ ตามเวลาที่เปิดหน้าไว้
+   * ดูเหมือน edge ตั้งเวลาเพี้ยนทั้งที่จริง ๆ ตรงกันเป๊ะ (ความผิดพลาดแบบเดียวกับ last_frame_at)
+   */
+  received_at: string;
 };
 
 export type LiveDeviceState = {

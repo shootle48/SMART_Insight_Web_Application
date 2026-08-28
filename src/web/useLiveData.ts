@@ -6,8 +6,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  fetchAllHistory,
   fetchDevices,
-  fetchHistory,
   fetchPoints,
   type DeviceRow,
   type LiveDevice,
@@ -46,20 +46,21 @@ export function useLiveData() {
 
       // เติมเส้นย้อนหลังให้ sparkline มีอะไรให้ดูตั้งแต่วินาทีแรก
       // ไม่งั้นจอที่เพิ่งบูตจะว่างเปล่าจนกว่าจะสะสมค่าได้เอง
-      const histories = await Promise.all(
-        p.map(async (pt) => {
-          try {
-            const buckets = await fetchHistory(pt.point_id, "15m");
-            return [
-              pt.point_id,
-              buckets.map((b) => ({ t: new Date(b.bucket).getTime(), v: b.avg_value })),
-            ] as const;
-          } catch {
-            return [pt.point_id, []] as const;
-          }
-        }),
-      );
-      setSpark(Object.fromEntries(histories));
+      //
+      // ⚠️ ใช้ endpoint รวม ไม่ยิงทีละจุด — จำนวนจุดต่างกันทุกโรงงาน
+      // ถ้ายิงทีละจุด 30 จุดจะกลายเป็น 30 requests ทุกครั้งที่ใครเปิดหน้า
+      try {
+        const rows = await fetchAllHistory("15m");
+        const grouped: Record<string, SparkPoint[]> = {};
+        for (const pt of p) grouped[pt.point_id] = [];
+        for (const r of rows) {
+          (grouped[r.point_id] ??= []).push({ t: new Date(r.bucket).getTime(), v: r.avg_value });
+        }
+        setSpark(grouped);
+      } catch {
+        // sparkline ว่างไม่ใช่เรื่องคอขาดบาดตาย — ค่าปัจจุบันยังแสดงได้ตามปกติ
+        setSpark(Object.fromEntries(p.map((pt) => [pt.point_id, []])));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -98,6 +99,9 @@ export function useLiveData() {
                 confidence: hit.confidence,
                 quality: hit.quality,
                 captured_at: hit.captured_at,
+                // ต้องอัปเดตคู่กับ captured_at เสมอ ไม่งั้น "ส่วนต่างนาฬิกา" จะถ่างขึ้น
+                // เรื่อย ๆ ตามเวลาที่เปิดหน้าไว้ แล้วดูเหมือน edge ตั้งเวลาเพี้ยน
+                received_at: hit.received_at,
                 frame_id: hit.frame_id,
               }
             : p;

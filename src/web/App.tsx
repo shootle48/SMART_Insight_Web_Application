@@ -4,9 +4,15 @@ import { useEffect, useState } from "react";
 import { useLiveData } from "./useLiveData";
 import { DeviceBar } from "./components/DeviceBar";
 import { PointCard } from "./components/PointCard";
+import { PointDetail } from "./components/PointDetail";
 
 export function App() {
   const { points, devices, spark, conn, error, reload } = useLiveData();
+
+  // จุดที่กำลังเปิดดูรายละเอียด — เก็บเป็น id ไม่ใช่ object
+  // เพื่อให้ค่าที่โชว์ในแผงอัปเดตสดตาม SSE ไปด้วย ไม่ค้างที่ snapshot ตอนกด
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = points.find((p) => p.point_id === selectedId) ?? null;
 
   // "ตอนนี้" ต้องเดินเองทุกวินาที ไม่ใช่คำนวณครั้งเดียวตอน render
   // ไม่งั้นอายุของค่าจะค้างอยู่ที่ตัวเลขเดิมตลอดเมื่อข้อมูลหยุดไหล ซึ่งเป็นตอนที่สำคัญที่สุด
@@ -28,7 +34,7 @@ export function App() {
         <div className="blob blob-2" />
       </div>
 
-      <div className="app">
+      <div className={`app${selected ? " app-detail" : ""}`}>
       <header className="topbar">
         <div>
           <h1>Meter</h1>
@@ -62,13 +68,24 @@ export function App() {
             )}
             <div className="grid">
               {list.map((p) => (
-                <PointCard key={p.point_id} point={p} spark={spark[p.point_id] ?? []} now={now} />
+                <PointCard
+                  key={p.point_id}
+                  point={p}
+                  spark={spark[p.point_id] ?? []}
+                  now={now}
+                  selected={p.point_id === selectedId}
+                  onOpen={() => setSelectedId(p.point_id)}
+                />
               ))}
             </div>
           </section>
         ),
       )}
       </div>
+
+      {selected && (
+        <PointDetail point={selected} now={now} onClose={() => setSelectedId(null)} />
+      )}
     </>
   );
 }

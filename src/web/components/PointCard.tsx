@@ -15,9 +15,9 @@ import { Gauge } from "./Gauge";
 import { Sparkline } from "./Sparkline";
 import { ageLabel, formatValue, isStale } from "../time";
 
-type Props = { point: PointRow; spark: SparkPoint[]; now: number };
+type Props = { point: PointRow; spark: SparkPoint[]; now: number; onOpen?: () => void; selected?: boolean };
 
-export function PointCard({ point, spark, now }: Props) {
+export function PointCard({ point, spark, now, onOpen, selected }: Props) {
   const offline = point.device_status !== "ONLINE";
   const stale = isStale(point.captured_at, now);
   const unreadable = point.quality === "UNREADABLE";
@@ -47,7 +47,24 @@ export function PointCard({ point, spark, now }: Props) {
               : "ok";
 
   return (
-    <article className={`card card-${state}`}>
+    <article
+      className={`card card-${state}${selected ? " card-selected" : ""}${onOpen ? " card-clickable" : ""}`}
+      // ใช้ role/tabIndex แทน <button> เพราะการ์ดมีโครงสร้างซ้อนหลายชั้น
+      // ห่อด้วยปุ่มจะทำให้ semantics ข้างในเพี้ยน — แต่ต้องรับคีย์บอร์ดเองให้ครบ
+      {...(onOpen
+        ? {
+            role: "button",
+            tabIndex: 0,
+            onClick: onOpen,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpen();
+              }
+            },
+          }
+        : {})}
+    >
       <header className="card-head">
         <h2>{point.label ?? point.point_id}</h2>
         <span className="card-id">{point.point_id}</span>

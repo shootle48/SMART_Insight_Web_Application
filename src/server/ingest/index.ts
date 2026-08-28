@@ -154,11 +154,13 @@ async function handleFrame(frame: MeterFrameMessage) {
   const lastEmit = lastEmitAt.get(frame.device_id) ?? 0;
   if (now - lastEmit >= LIVE_EMIT_MIN_MS) {
     lastEmitAt.set(frame.device_id, now);
+    const receivedAt = new Date().toISOString();
     const live: LiveReading[] = frame.readings.map((r) => ({
       ...r,
       device_id: frame.device_id,
       frame_id: frame.frame_id,
       captured_at: frame.captured_at,
+      received_at: receivedAt,
     }));
     liveEvents.emit("readings", live);
   }
