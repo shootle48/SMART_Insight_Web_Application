@@ -24,8 +24,18 @@
 
 ```bash
 bun install
-bun run dev            # server (Hono) + web (Vite) พร้อมกัน
-bun run mock-edge      # จำลอง edge 3 ตัวยิง MQTT เข้ามา
+
+# --- เทสบนเครื่อง dev: 3 ขั้น ---
+# 0) เปิด Docker Desktop ก่อน (Windows ปิดเองเวลาเครื่อง idle/restart)
+bun run stack:up       # postgres + mosquitto
+bun run dev:all        # server + หน้าเว็บ + mock ยิงข้อมูล พร้อมกันในคำสั่งเดียว
+#    → เปิด http://localhost:5173
+
+bun run stack:status   # เช็คว่า container ขึ้นครบไหม
+bun run stack:down     # หยุด container (ข้อมูลไม่หาย อยู่ใน volume)
+
+bun run dev            # เฉพาะ server + web (ไม่มี mock)
+bun run mock-edge      # เฉพาะ mock — ปฏิเสธ broker ที่ไม่ใช่ localhost เว้นแต่ใส่ --allow-remote
 bun run build          # ออก dist/ สำหรับ deploy
 
 bun run db:migrate     # สร้าง/อัปเดตตาราง
