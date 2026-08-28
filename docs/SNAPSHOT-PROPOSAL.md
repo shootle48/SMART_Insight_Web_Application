@@ -162,8 +162,7 @@ client.publish(f"meter/{DEVICE_ID}/snapshot/{frame_id}", jpeg_bytes, qos=1, reta
 
 **เช็คว่าทาง A ใช้ได้ไหม** — รันจากเครื่อง edge:
 ```bash
-curl -s -o /dev/null -w "%{http_code}
-" http://smsn-pi-office-01.local:3000/api/health
+curl -s -o /dev/null -w '%{http_code}' http://smsn-pi-office-01.local:3000/api/health; echo
 ```
 ได้ `200` = ทาง A ใช้ได้ · ต่อไม่ติด = มีอะไรกั้นอยู่ → ไปทาง B
 
