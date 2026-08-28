@@ -8,6 +8,7 @@
 
 import { sql as raw } from "drizzle-orm";
 import { db, sql } from "../src/db/index";
+import { retentionStatus } from "../src/server/retention";
 
 const filter = process.argv[2] ?? "";
 const line = (s = "") => console.log(s);
@@ -98,7 +99,17 @@ const sizes = (await db.execute(raw`
 line();
 line("=== พื้นที่ที่ใช้ (รวม index) ===");
 for (const s of sizes) line(`  ${String(s.table).padEnd(14)} ${s.total}`);
+// อ่านสถานะจริงจาก config แทนการเขียนข้อความตายตัว
+// เคยพลาดมาแล้ว: hardcode ว่า "ยังไม่มี retention" ไว้ตั้งแต่ก่อนทำ T-009
+// แล้วลืมแก้ กลายเป็นข้อความที่ขัดกับความจริงและทำให้คนอ่านเชื่อผิด
+const ret = retentionStatus();
 line();
-line("  ⚠️ ยังไม่มี retention — ตาราง readings โตไปเรื่อย ๆ บน SD (ดู T-009)");
+if (!ret.enabled) {
+  line("  ⚠️ retention ปิดอยู่ (RETENTION_DAYS=0) — ตาราง readings จะโตไปเรื่อย ๆ");
+} else {
+  const when = ret.last ? `รันล่าสุด ${ret.last.at.slice(0, 19)} ลบไป ${ret.last.deleted} แถว` : "ยังไม่ได้รันในรอบนี้";
+  line(`  retention: เก็บย้อนหลัง ${ret.days} วัน · ${when}`);
+  line("  (สคริปต์นี้ไม่ได้รัน retention เอง — ตัวที่รันจริงคือ service ที่เปิดค้างอยู่)");
+}
 
 await sql.end();
