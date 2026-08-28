@@ -6,13 +6,16 @@
 
 # Active
 
-## T-011 [P2] รับ snapshot จาก edge — blocked (รอทีม AI ตอบ)
+## T-011 [P2] รับ snapshot จาก edge — todo
 why:        ภาพตอน UNREADABLE คือหลักฐานว่าทำไมอ่านไม่ออก ซึ่งเป็นกุญแจแก้ปัญหา 47% ที่ค้างอยู่
-scope:      `POST /api/frames/:frame_id/snapshot` รับไบต์ดิบ · จำกัดขนาด · เก็บเป็นไฟล์บนดิสก์
-            (ไม่ลง DB — ไม่งั้น pg_dump บวมตาม) · retention แยกและสั้นกว่าของ readings ·
-            แสดงบนการ์ด ; **ไม่ทำ** ถ้าทีม AI ยืนยันจะส่ง base64 ผ่าน MQTT — ต้องคุยกันก่อน
-done-when:  edge ส่งภาพตอนอ่านไม่ออก แล้วกดดูจากการ์ดบนจอได้ · ปริมาณต่อวันไม่เกิน ~100 MB
-blocked:    รอทีม AI ตอบ `docs/SNAPSHOT-PROPOSAL.md` — วิธีส่งเปลี่ยน scope ทั้งใบ
+scope:      subscribe `<prefix>/+/snapshot/+` (**คนละ subscription กับ `meter/+/+` เดิม** เพราะ
+            topic ภาพมี 4 ระดับ ของเดิมจับได้แค่ 3) · เก็บเป็นไฟล์บนดิสก์ ไม่ลง DB
+            (ไม่งั้น pg_dump บวมตาม) · retention แยกและสั้นกว่าของ readings · แสดงบนการ์ด
+            · ตั้ง `message_size_limit` ใน mosquitto.conf (default = ไม่จำกัด)
+done-when:  edge ส่งภาพตอนอ่านไม่ออก แล้วกดดูจากการ์ดบนจอได้ · ปริมาณต่อวันไม่เกิน ~100 MB ·
+            `ingest.invalid` ไม่ขยับ (ภาพต้องไม่ไหลเข้า parser ของ meter_frame)
+note:       เคาะทาง B แล้ว (D-013) · ⚠️ ห้าม subscribe `meter/#` เพราะภาพจะเข้า parseTopic
+            แล้วถูกนับเป็น invalid ทำให้ตัวเลขที่ใช้เฝ้าดูสัญญาเพี้ยน
 
 ## T-010 [P2] pg_dump cron ออกนอกเครื่อง — doing
 why:        D-006 ยอมให้ Postgres อยู่บน SD โดยแลกกับต้องมี backup นอกเครื่อง
