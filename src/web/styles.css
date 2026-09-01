@@ -47,6 +47,8 @@
      (audit issue #2 — วัดจริง 5.0:1 ทั้งเป็นตัวหนังสือและเป็นพื้นแบนเนอร์+ตัวหนังสือขาว) */
   --dead: #6b7070;
   --info: #0a599f;
+  /* ตัวหนังสือบนแถบ banner สีทึบ (ok/uncertain/over/bad/dead) — ขาวผ่าน AA ทุกตัว (≥4.5:1) */
+  --on-banner: #ffffff;
 
   --r-card: 0.5rem;
   --r-pill: 999px;
@@ -191,11 +193,11 @@ body {
   background: var(--panel);
   border: 2px solid var(--line);
   border-radius: var(--r-card);
-  padding: 16px 18px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  overflow: hidden;
 }
+/* เนื้อการ์ดแยกออกจาก .card เพราะ .banner ต้องพาดเต็มความกว้างชนขอบ
+   (ถ้า padding อยู่ที่ .card banner จะเว้นขอบซ้ายขวาไม่เต็มใบ) */
+.card-inner { padding: 16px 18px 12px; display: flex; flex-direction: column; gap: 12px; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .card-head h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; }
 .card-id { color: var(--dim); font-size: 11px; font-family: var(--mono); text-align: right; }
@@ -237,6 +239,31 @@ body {
 .card-uncertain .v-num { color: var(--uncertain); }
 .card-over { border: 4px solid var(--over); }
 .card-over .v-num { color: var(--over); }
+/* หลุดไปตอนเขียน D-014 ใหม่ทั้งไฟล์ — อ่านไม่ออกต้องเด่นสุดเพราะเป็นสถานะที่ต้องรีบรู้สุด */
+.card-unreadable { border: 4px solid var(--bad); }
+
+/* แถบสถานะเต็มหัวการ์ด — สื่อสารสถานะจากระยะไกลได้เร็วกว่าตัวหนังสือเล็ก ๆ ท้ายใบ
+   แทนที่ badge เดิมของสถานะเดียวกัน (ไม่ใส่ซ้ำสองที่ ข้อความเดิมย้ายมาที่นี่)
+   ยกเว้น "never" ที่ไม่มี banner — ขอบประบางพอสื่อแล้วว่า "ยังไม่เคยมีข้อมูล" ไม่ใช่ "ผิดปกติ" */
+.banner {
+  padding: 5px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--on-banner);
+}
+.card-unreadable .banner { background: var(--bad); }
+.card-over .banner { background: var(--over); }
+.card-uncertain .banner { background: var(--uncertain); }
+.card-offline .banner { background: var(--dead); }
+.card-stale .banner { background: var(--dead); }
+
+/* แถบ confidence — ตัวเลขเล็กมาก่อนหน้านี้ (0.95) แทบไม่มีใครอ่าน
+   แถบยาว-สั้นมีสีอ่านจากไกลได้ ตรงกับหลัก "สถานะผิดปกติต้องสะดุดตา" ที่ยึดทั้งไฟล์ */
+.conf { margin-top: 2px; }
+.conf-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.conf-track { height: 6px; border-radius: var(--r-pill); background: var(--panel-hi); overflow: hidden; }
+.conf-fill { display: block; height: 100%; border-radius: var(--r-pill); }
 
 /* ---------- sparkline ---------- */
 .card-spark { height: 48px; }

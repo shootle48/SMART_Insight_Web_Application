@@ -46,6 +46,23 @@ export function PointCard({ point, spark, now, onOpen, selected }: Props) {
               ? "uncertain"
               : "ok";
 
+  // ข้อความ banner — "never" ไม่มี banner เพราะขอบประเฉย ๆ ก็สื่อพอแล้วว่า
+  // "ยังไม่เคยมีข้อมูล" (สถานะเป็นกลาง) ต่างจากสถานะอื่นที่ "ผิดปกติ" จริง ๆ
+  const bannerText =
+    state === "unreadable"
+      ? "อ่านไม่ออก"
+      : state === "over"
+        ? "เกินสเกล"
+        : state === "uncertain"
+          ? "ไม่มั่นใจ"
+          : state === "offline"
+            ? "เครื่องออฟไลน์"
+            : state === "stale"
+              ? "ค่าเก่า"
+              : null;
+
+  const confPct = point.confidence !== null ? Math.round(point.confidence * 100) : null;
+
   return (
     <article
       className={`card card-${state}${selected ? " card-selected" : ""}${onOpen ? " card-clickable" : ""}`}
@@ -65,63 +82,88 @@ export function PointCard({ point, spark, now, onOpen, selected }: Props) {
           }
         : {})}
     >
-      <header className="card-head">
-        <h2>{point.label ?? point.point_id}</h2>
-        <span className="card-id">{point.point_id}</span>
-      </header>
+      {bannerText && <div className="banner">{bannerText}</div>}
 
-      <div className="card-body">
-        {showGauge && (
-          <Gauge
-            value={unreadable ? null : point.value_num}
-            min={point.min_value!}
-            max={point.max_value!}
-            unreadable={unreadable || never}
-            uncertain={uncertain}
-          />
+      <div className="card-inner">
+        <header className="card-head">
+          <h2>{point.label ?? point.point_id}</h2>
+          <span className="card-id">{point.point_id}</span>
+        </header>
+
+        <div className="card-body">
+          {showGauge && (
+            <Gauge
+              value={unreadable ? null : point.value_num}
+              min={point.min_value!}
+              max={point.max_value!}
+              unreadable={unreadable || never}
+              uncertain={uncertain}
+            />
+          )}
+
+          <div className="card-value">
+            {never ? (
+              <span className="v-none">ยังไม่มีค่า</span>
+            ) : unreadable ? (
+              // ตั้งใจไม่โชว์ตัวเลขใด ๆ ที่นี่ — เขียน 0 หรือ "-" ที่ดูเหมือนตัวเลข
+              // จะทำให้คนอ่านผิดว่าค่าตกลงไปจริง
+              <span className="v-unreadable">อ่านไม่ออก</span>
+            ) : point.value_num !== null ? (
+              <>
+                <span className="v-num">{formatValue(point.value_num, point.min_value, point.max_value)}</span>
+                {point.unit && <span className="v-unit">{point.unit}</span>}
+              </>
+            ) : (
+              <span className="v-text">{point.value_text}</span>
+            )}
+          </div>
+        </div>
+
+        <div className="card-spark">
+          <Sparkline data={spark} />
+        </div>
+
+        {confPct !== null && (
+          <div className="conf">
+            <div className="conf-row">
+              <span>ความมั่นใจ</span>
+              <span>{confPct}%</span>
+            </div>
+            <div className="conf-track">
+              <i
+                className="conf-fill"
+                style={{
+                  width: `${confPct}%`,
+                  background: unreadable
+                    ? "var(--bad)"
+                    : over
+                      ? "var(--over)"
+                      : uncertain
+                        ? "var(--uncertain)"
+                        : "var(--ok)",
+                }}
+              />
+            </div>
+          </div>
         )}
 
-        <div className="card-value">
-          {never ? (
-            <span className="v-none">ยังไม่มีค่า</span>
-          ) : unreadable ? (
-            // ตั้งใจไม่โชว์ตัวเลขใด ๆ ที่นี่ — เขียน 0 หรือ "-" ที่ดูเหมือนตัวเลข
-            // จะทำให้คนอ่านผิดว่าค่าตกลงไปจริง
-            <span className="v-unreadable">อ่านไม่ออก</span>
-          ) : point.value_num !== null ? (
-            <>
-              <span className="v-num">{formatValue(point.value_num, point.min_value, point.max_value)}</span>
-              {point.unit && <span className="v-unit">{point.unit}</span>}
-            </>
-          ) : (
-            <span className="v-text">{point.value_text}</span>
-          )}
-        </div>
+        <footer className="card-foot">
+          {/* badge สถานะคุณภาพ (ออฟไลน์/ค่าเก่า/ไม่มั่นใจ/เกินสเกล) ย้ายไปขึ้น banner ด้านบนแล้ว
+              เหลือ "ยังไม่ตั้งค่า" ไว้เพราะเป็นคนละแกน (สถานะ config ไม่ใช่คุณภาพข้อมูล)
+              ยังต้องมีที่ทางของมันแม้การ์ดจะดู "ok" อยู่ก็ตาม */}
+          <span className="badges">{point.enabled === false && <b className="badge b-new">ยังไม่ตั้งค่า</b>}</span>
+          <span className="card-age">
+            {ageLabel(point.captured_at, now)}
+            {hasScale && (
+              <span className="card-range">
+                {" · "}
+                {point.min_value}–{point.max_value}
+                {point.unit ? ` ${point.unit}` : ""}
+              </span>
+            )}
+          </span>
+        </footer>
       </div>
-
-      <div className="card-spark">
-        <Sparkline data={spark} />
-      </div>
-
-      <footer className="card-foot">
-        <span className="badges">
-          {offline && <b className="badge b-offline">เครื่องออฟไลน์</b>}
-          {!offline && stale && !never && <b className="badge b-stale">ค่าเก่า</b>}
-          {uncertain && !unreadable && <b className="badge b-uncertain">ไม่มั่นใจ</b>}
-          {over && !unreadable && <b className="badge b-over">เกินสเกล</b>}
-          {point.enabled === false && <b className="badge b-new">ยังไม่ตั้งค่า</b>}
-        </span>
-        <span className="card-age">
-          {ageLabel(point.captured_at, now)}
-          {hasScale && (
-            <span className="card-range">
-              {" · "}
-              {point.min_value}–{point.max_value}
-              {point.unit ? ` ${point.unit}` : ""}
-            </span>
-          )}
-        </span>
-      </footer>
     </article>
   );
 }
