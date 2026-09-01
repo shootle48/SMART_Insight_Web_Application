@@ -6,8 +6,30 @@ import { DeviceBar } from "./components/DeviceBar";
 import { PointCard } from "./components/PointCard";
 import { PointDetail } from "./components/PointDetail";
 
+/** อ่านค่าที่จำไว้ตอนเปิดหน้าครั้งแรก — ต้องตรงกับ script ใน index.html เป๊ะ
+ * (ไฟล์นั้นตั้ง attribute ให้ก่อน React mount กันจอกระพริบ ที่นี่แค่ต้องรู้ค่าเดียวกัน
+ * เพื่อไม่ให้ state ของ React เพี้ยนไปจาก DOM จริงตอนเรนเดอร์รอบแรก) */
+function initialTheme(): "light" | "dark" {
+  try {
+    return localStorage.getItem("meter-theme") === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
 export function App() {
   const { points, devices, spark, conn, error, reload } = useLiveData();
+
+  const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("meter-theme", theme);
+    } catch {
+      // จอ kiosk บางเครื่องอาจปิด localStorage (private mode ของ chromium) —
+      // ธีมจะไม่จำข้ามรีโหลด แต่สลับใช้งานตอนนี้ได้ปกติ ไม่ต้องล้มทั้งฟีเจอร์
+    }
+  }, [theme]);
 
   // จุดที่กำลังเปิดดูรายละเอียด — เก็บเป็น id ไม่ใช่ object
   // เพื่อให้ค่าที่โชว์ในแผงอัปเดตสดตาม SSE ไปด้วย ไม่ค้างที่ snapshot ตอนกด
@@ -40,9 +62,29 @@ export function App() {
           <h1>Meter</h1>
           <p className="sub">ค่าหน้าปัดจากตู้ควบคุม · อัปเดตสด</p>
         </div>
-        <div className={`conn conn-${conn}`}>
-          <span className="conn-dot" />
-          {conn === "live" ? "เชื่อมต่ออยู่" : conn === "connecting" ? "กำลังเชื่อมต่อ" : "สายหลุด — กำลังต่อใหม่"}
+        <div className="topbar-right">
+          <div className="theme-toggle" role="group" aria-label="สลับธีม">
+            <button
+              type="button"
+              className={theme === "light" ? "on" : ""}
+              onClick={() => setTheme("light")}
+              aria-pressed={theme === "light"}
+            >
+              สว่าง
+            </button>
+            <button
+              type="button"
+              className={theme === "dark" ? "on" : ""}
+              onClick={() => setTheme("dark")}
+              aria-pressed={theme === "dark"}
+            >
+              มืด
+            </button>
+          </div>
+          <div className={`conn conn-${conn}`}>
+            <span className="conn-dot" />
+            {conn === "live" ? "เชื่อมต่ออยู่" : conn === "connecting" ? "กำลังเชื่อมต่อ" : "สายหลุด — กำลังต่อใหม่"}
+          </div>
         </div>
       </header>
 

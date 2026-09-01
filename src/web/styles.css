@@ -1,5 +1,7 @@
-/* "High-Visibility Industrial" — พื้นสว่าง ต่อยอดจาก "Liquid Industrial" เดิม (D-011)
+/* "High-Visibility Industrial" — พื้นสว่างเป็นค่าเริ่มต้น ต่อยอดจาก "Liquid Industrial" เดิม (D-011)
  * เปลี่ยนไปตามที่ทีมทดสอบ mock (docs/mock/theme-mock.html) แล้วเอนไปทางสีขาว + กรอบใหม่ (D-014)
+ * มีปุ่มสลับกลับธีมมืดได้ (D-015) — สลับ `data-theme` บน <html> เท่านั้น โครงการ์ด/banner/
+ * confidence bar ใช้ร่วมกันทั้งสองธีม ต่างกันแค่ชุดสี
  *
  * สองหลักเดิมยังยึดอยู่:
  *   1. อ่านออกจากระยะไกล และสถานะผิดปกติต้องสะดุดตาทันที
@@ -14,8 +16,13 @@
  *     ไม่มีความหมายบนพื้นขาว (และเสี่ยงดูเหมือนจอเปื้อน)
  *   - แก้ 3 จุดที่ audit accessibility เจอว่า contrast ไม่ผ่าน AA (4.5:1 ตัวหนังสือ, 3:1 ขอบ):
  *     ตัวหนังสือรอง (--dim), ป้ายสถานะออฟไลน์/ค่าเก่า (--dead), ขอบการ์ดปกติ (--line)
+ *     🔴 ธีมมืดของเดิม (ก่อน D-014) มีบั๊กเดียวกันทั้ง 3 จุด — ตอนเอากลับมาทำ D-015
+ *     คำนวณค่าใหม่ให้ผ่าน AA ด้วยเช่นกัน ไม่ได้เอาค่าเดิมที่เคย fail กลับมาทั้งดุ้น
  *
  * ยังคงตามเดิม (D-011): ฟอนต์ระบบแทน Google Fonts, ไม่มี backdrop-filter
+ *
+ * ตัวแปรสีที่ยังไม่ใช่ hex ตรง ๆ (เช่นสี badge/chip โปร่งแสง) ใช้ color-mix() คำนวณจาก
+ * token สถานะเสมอ — ห้ามเขียน rgba(R,G,B,A) ตรง ๆ อีก เพราะจะไม่สลับสีตามธีมให้อัตโนมัติ
  */
 
 :root {
@@ -49,6 +56,11 @@
   --info: #0a599f;
   /* ตัวหนังสือบนแถบ banner สีทึบ (ok/uncertain/over/bad/dead) — ขาวผ่าน AA ทุกตัว (≥4.5:1) */
   --on-banner: #ffffff;
+  /* พื้นทึบของแผงรายละเอียด (T-012) — ต้องทึบกว่าการ์ดเพราะซ้อนอยู่ข้างบน
+     ธีมสว่างพื้นการ์ดทึบอยู่แล้วเลยเท่ากับ --panel แต่ธีมมืด --panel โปร่งแสง จึงแยกกัน */
+  --panel-solid: #ffffff;
+  /* เส้น track ของเกจวงแหวน/กราฟ — เป็นกลาง ไม่ใช่ตัวหนังสือ ไม่ต้องผ่าน AA แค่มองเห็นบนพื้น */
+  --track: rgba(0, 0, 0, 0.08);
 
   --r-card: 0.5rem;
   --r-pill: 999px;
@@ -57,6 +69,32 @@
      ที่ต้องเป็น mono เพราะเลขความกว้างเท่ากัน ค่าเปลี่ยนแล้วเลย์เอาต์ไม่ขยับ */
   --mono: ui-monospace, "DejaVu Sans Mono", "JetBrains Mono", "Cascadia Mono", monospace;
   --sans: "Segoe UI", system-ui, -apple-system, "Noto Sans Thai", "Noto Sans", sans-serif;
+}
+
+/* ธีมมืด (D-015) — ค่าจาก "Liquid Industrial" เดิมก่อน D-014 แต่แก้ --dim/--dead/--line
+   ใหม่ให้ผ่าน WCAG AA จริง (ของเดิมพวกนี้ fail มาตั้งแต่แรก — เจอตอน audit accessibility) */
+:root[data-theme="dark"] {
+  --bg: #0b0e11;
+  --panel: rgba(255, 255, 255, 0.03);
+  --panel-hi: rgba(255, 255, 255, 0.055);
+  --panel-solid: #12161a;
+  --line: rgba(255, 255, 255, 0.36); /* เดิม .12 = 1.36:1 fail ; ค่านี้ 3.31:1 ผ่าน 3:1 */
+  --line-soft: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.5);
+
+  --text: #e1e2e7;
+  --muted: #8d9aa3;
+  --dim: #96a0a8; /* เดิม #6b7780 = 3.77-3.99:1 fail ; ค่านี้ 7.27:1 */
+
+  --ok: #00ffc2;
+  --ok-dim: #00e1ab;
+  --uncertain: #ffba20;
+  --over: #ff9d3d;
+  --bad: #ffb4ab;
+  --dead: #838d94; /* เดิม #5d6a72 = 3.29-3.47:1 fail ; ค่านี้ 5.72:1 */
+  --info: #a2c9ff;
+  --on-banner: #0b0e11; /* สถานะธีมมืดพื้นสว่างนวล ตัวหนังสือบน banner จึงต้องเข้ม ไม่ใช่ขาว */
+  --track: rgba(255, 255, 255, 0.1);
 }
 
 * { box-sizing: border-box; }
@@ -93,6 +131,21 @@ body {
 }
 .sub { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
 
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+/* ปุ่มสลับธีม (D-015) — ไว้เทียบมืด/สว่างบนจอจริงตรง ๆ ไม่ต้องพกไฟล์ mock ไปเปิดแยก */
+.theme-toggle { display: flex; border: 1px solid var(--line); border-radius: var(--r-pill); overflow: hidden; }
+.theme-toggle button {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.theme-toggle button.on { background: var(--text); color: var(--bg); }
+
 .conn {
   display: flex;
   align-items: center;
@@ -105,11 +158,11 @@ body {
   background: var(--panel);
 }
 .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dead); }
-.conn-live { color: var(--ok); border-color: rgba(0, 110, 42, 0.35); }
+.conn-live { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
 .conn-live .conn-dot { background: var(--ok); }
 .conn-connecting { color: var(--uncertain); }
 .conn-connecting .conn-dot { background: var(--uncertain); }
-.conn-lost { color: var(--bad); border-color: rgba(186, 26, 26, 0.4); }
+.conn-lost { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
 .conn-lost .conn-dot { background: var(--bad); animation: blink 1.1s steps(2) infinite; }
 @keyframes blink { 50% { opacity: 0.2; } }
 
@@ -117,8 +170,8 @@ body {
   margin: 14px 0;
   padding: 12px 16px;
   border-radius: var(--r-card);
-  background: rgba(186, 26, 26, 0.06);
-  border: 1px solid rgba(186, 26, 26, 0.35);
+  background: color-mix(in srgb, var(--bad) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent);
   color: var(--bad);
   display: flex;
   gap: 12px;
@@ -127,7 +180,7 @@ body {
 .err button {
   background: var(--bad);
   border: 0;
-  color: #ffffff;
+  color: var(--on-banner);
   font-weight: 700;
   padding: 7px 14px;
   border-radius: 8px;
@@ -295,17 +348,17 @@ body {
 }
 .badges { display: flex; gap: 6px; flex-wrap: wrap; }
 .badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: var(--r-pill); }
-.b-offline { background: rgba(186, 26, 26, 0.10); color: var(--bad); }
-.b-stale { background: rgba(0, 0, 0, 0.06); color: var(--muted); }
-.b-uncertain { background: rgba(138, 80, 0, 0.10); color: var(--uncertain); }
-.b-over { background: rgba(160, 60, 0, 0.10); color: var(--over); }
-.b-new { background: rgba(10, 89, 159, 0.10); color: var(--info); }
+.b-offline { background: color-mix(in srgb, var(--bad) 10%, transparent); color: var(--bad); }
+.b-stale { background: var(--panel-hi); color: var(--muted); }
+.b-uncertain { background: color-mix(in srgb, var(--uncertain) 10%, transparent); color: var(--uncertain); }
+.b-over { background: color-mix(in srgb, var(--over) 10%, transparent); color: var(--over); }
+.b-new { background: color-mix(in srgb, var(--info) 10%, transparent); color: var(--info); }
 .card-age { color: var(--dim); font-size: 11px; margin-left: auto; white-space: nowrap; font-family: var(--mono); }
 .card-range { opacity: 0.8; }
 
 /* ---------- เกจ ---------- */
 .gauge { flex: none; }
-.gauge-track { fill: none; stroke: rgba(0, 0, 0, 0.08); stroke-width: 8; }
+.gauge-track { fill: none; stroke: var(--track); stroke-width: 8; }
 .gauge-fill {
   fill: none;
   stroke: var(--ok);
@@ -335,7 +388,7 @@ body {
 .card-clickable { cursor: pointer; transition: border-color .15s, background .15s; }
 .card-clickable:hover { background: var(--panel-hi); border-color: var(--line-strong); }
 .card-clickable:focus-visible { outline: 2px solid var(--ok); outline-offset: 2px; }
-.card-selected { border-color: var(--ok); box-shadow: 0 0 0 2px rgba(0, 110, 42, 0.25); }
+.card-selected { border-color: var(--ok); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 25%, transparent); }
 
 .detail {
   position: fixed;
@@ -345,8 +398,9 @@ body {
   overflow-y: auto;
   z-index: 10;
   padding: 20px 22px 28px;
-  /* ทึบเต็มที่เพราะซ้อนอยู่ข้างบนการ์ดอื่น — ต่างจากการ์ดตรงไม่ต้องโปร่ง */
-  background: #ffffff;
+  /* ทึบเต็มที่เพราะซ้อนอยู่ข้างบนการ์ดอื่น — ต่างจากการ์ดตรงไม่ต้องโปร่ง
+     (ธีมมืด --panel โปร่งแสง จึงต้องมี --panel-solid แยกต่างหาก ไม่ใช้ --panel ตรงนี้) */
+  background: var(--panel-solid);
   border-left: 2px solid var(--line);
   animation: slidein .18s ease-out;
 }
@@ -368,10 +422,10 @@ body {
 .d-chips { display: flex; gap: 6px; margin: 16px 0 10px; }
 .chip { font-size: 11px; padding: 5px 12px; border-radius: var(--r-pill); border: 1px solid var(--line); color: var(--muted); background: none; cursor: pointer; font-family: inherit; }
 .chip:hover { color: var(--text); }
-.chip-on { background: rgba(0, 110, 42, 0.10); border-color: var(--ok); color: var(--ok); }
+.chip-on { background: color-mix(in srgb, var(--ok) 10%, transparent); border-color: var(--ok); color: var(--ok); }
 
 .hc { display: block; width: 100%; height: 150px; }
-.hc-grid { stroke: rgba(0, 0, 0, 0.08); }
+.hc-grid { stroke: var(--track); }
 .hc-axis { fill: var(--dim); font-size: 9px; font-family: var(--mono); }
 .hc-line { fill: none; stroke: var(--ok-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .hc-band { stroke: none; }
@@ -397,4 +451,4 @@ body {
 .d-box .v-sm { font-size: 11px; word-break: break-all; }
 
 .d-snap { border: 1px dashed var(--line); border-radius: 10px; padding: 16px; text-align: center; color: var(--dim); font-size: 11px; margin-top: 14px; }
-.d-err { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: rgba(186, 26, 26, .06); border: 1px solid rgba(186, 26, 26, .35); color: var(--bad); font-size: 12px; }
+.d-err { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--bad) 6%, transparent); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); color: var(--bad); font-size: 12px; }

@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Meter</title>
+    <!-- ตั้ง data-theme ก่อน React mount กัน "จอกระพริบขาว" แวบหนึ่งตอนโหลดถ้าเลือกธีมมืดไว้
+         (ถ้ารอ useEffect ใน React จะขาวก่อนเสมอ 1 เฟรมแล้วค่อยมืด บนจอที่เปิดค้าง 24 ชม.
+         จุดกระพริบแบบนี้สังเกตได้ทุกครั้งที่ Vite HMR หรือรีโหลดหน้า) -->
+    <script>
+      try {
+        if (localStorage.getItem("meter-theme") === "dark") document.documentElement.dataset.theme = "dark";
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
