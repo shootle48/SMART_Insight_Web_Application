@@ -31,12 +31,8 @@
 ธีมมืดที่เอากลับมาไม่ใช่ของเดิมตรง ๆ — แก้ contrast bug เดียวกับที่ audit เจอในธีมสว่างด้วย
 (รายละเอียดเต็มดู D-015 ใน `docs/DECISIONS.md`)
 
-🔴 **`e49fabc` และ `b20bc6e` ยังไม่ได้ deploy ขึ้น Pi** — ทดสอบผ่าน `bun run dev:all`
-บนเครื่อง dev แล้วเท่านั้น (ครบทั้ง 2 ธีม + ทุก state) จอ Pi ตอนนี้ยังเป็นเวอร์ชันที่ไม่มี
-banner/confidence bar/toggle
-```bash
-git pull && bun install && bun run build && sudo systemctl restart meter && ~/Meter/deploy/kiosk/kiosk-restart.sh
-```
+✅ **`e49fabc` และ `b20bc6e` deploy ขึ้น Pi แล้ว** (2026-09-01) — ผู้ใช้ยืนยัน "ได้ปกติเลย"
+จอจริงตอนนี้มี banner + confidence bar + ปุ่มสลับธีมมืด/สว่างครบ
 
 **ค้างอยู่**
 - **T-010 backup** = `doing` — สคริปต์ + timer + restore-test ทำครบและทดสอบผ่านแล้ว
