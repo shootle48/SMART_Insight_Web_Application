@@ -6,6 +6,17 @@
 
 ---
 
+## เพิ่ม topic MQTT สำหรับ snapshot เข้า source of truth (T-011)  🟢
+- `meterTopics.snapshot(deviceId, frameId)` + `snapshotAll()` ใน `src/contract/topics.ts`
+  ตาม pattern ที่เคาะไว้แล้วตั้งแต่ D-013 (`meter/<device_id>/snapshot/<frame_id>`, 4 ระดับ,
+  ไบต์ดิบ, retain=false) — ก่อนหน้านี้ pattern นี้มีแค่ในเอกสาร `SNAPSHOT-PROPOSAL.md`
+  ที่ส่งให้ทีม AI ยังไม่มีอยู่ในโค้ดจริงเป็น source of truth
+- แค่เพิ่ม topic helper เท่านั้น **ยังไม่ implement การ subscribe/เก็บไฟล์/แสดงผล**
+  (ขอบเขตเต็มของ T-011 ยังค้างอยู่ รอเพื่อนเริ่มส่งภาพจริงก่อน)
+- verify: `bun run type-check` ผ่านสะอาด
+
+---
+
 ## เพิ่ม WATER_METER เข้าสัญญา + ลบ LAMP ทิ้ง (D-016)  🔴
 - เพื่อนทีม AI ทดสอบมิเตอร์น้ำจริง ส่ง `kind: "WATER_METER"` มา validate ไม่ผ่านเพราะ enum
   เดิมมีแค่ `GAUGE`/`SEVEN_SEGMENT`/`LAMP` — เพิ่ม `WATER_METER` เข้า `pointKindSchema`
