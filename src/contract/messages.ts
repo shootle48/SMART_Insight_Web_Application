@@ -20,23 +20,22 @@ export const pointReadingSchema = z
   .object({
     point_id: z.string().min(1),
     kind: pointKindSchema,
-    // ค่าอยู่ในช่องใดช่องหนึ่งตาม kind — แยกเป็นสองคอลัมน์ nullable ไม่ใช้ union
+    // ค่าอยู่ในช่องใดช่องหนึ่ง — แยกเป็นสองคอลัมน์ nullable ไม่ใช้ union
     // เพื่อให้ map ลงตาราง readings ได้ 1:1 โดยไม่ต้องแตกตาราง
-    value_num: z.number().nullable(), // GAUGE / SEVEN_SEGMENT
-    value_text: z.string().nullable(), // LAMP (และ SEVEN_SEGMENT ที่โชว์ตัวอักษร)
+    //
+    // ⚠️ ตั้งใจไม่ผูกว่า kind ไหนต้องใช้ช่องไหน (เคยผูกกับ LAMP ตัวเดียวมาก่อน แต่พัง
+    // ตอนเจอ WATER_METER ที่ส่งค่าเป็นข้อความเหมือนกัน) — ปล่อยให้ edge เลือกเองว่าค่าที่อ่านได้
+    // ของจุดนั้นเป็นตัวเลขหรือข้อความ กฎเช็คแค่ "ต้องมีค่าใดค่าหนึ่งไม่ว่าง" ด้านล่าง
+    value_num: z.number().nullable(),
+    value_text: z.string().nullable(),
     unit: z.string().min(1).nullable(),
     confidence: z.number().min(0).max(1).nullable(),
     quality: readingQualitySchema,
   })
-  .refine(
-    (r) =>
-      r.quality === "UNREADABLE" ||
-      (r.kind === "LAMP" ? r.value_text !== null : r.value_num !== null),
-    {
-      message: "จุดที่อ่านได้ต้องมีค่าตรงกับ kind ของมัน",
-      path: ["quality"],
-    },
-  );
+  .refine((r) => r.quality === "UNREADABLE" || r.value_num !== null || r.value_text !== null, {
+    message: "จุดที่อ่านได้ต้องมีค่าอย่างน้อยหนึ่งช่อง (value_num หรือ value_text)",
+    path: ["quality"],
+  });
 export type PointReading = z.infer<typeof pointReadingSchema>;
 
 // ผลอ่านหนึ่งเฟรม = ทุกจุดที่เห็นในภาพเดียวกัน ใช้ timestamp เดียวกัน

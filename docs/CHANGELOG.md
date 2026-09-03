@@ -6,6 +6,25 @@
 
 ---
 
+## เพิ่ม WATER_METER เข้าสัญญา + ลบ LAMP ทิ้ง (D-016)  🔴
+- เพื่อนทีม AI ทดสอบมิเตอร์น้ำจริง ส่ง `kind: "WATER_METER"` มา validate ไม่ผ่านเพราะ enum
+  เดิมมีแค่ `GAUGE`/`SEVEN_SEGMENT`/`LAMP` — เพิ่ม `WATER_METER` เข้า `pointKindSchema`
+- แก้ที่ต้นตอแทนที่จะเพิ่ม special-case: กฎ `refine` เดิมผูก "LAMP ใช้ value_text นอกนั้น
+  value_num" ตายตัว เปลี่ยนเป็น **"มีค่าใดค่าหนึ่งไม่ null ก็พอ ไม่สนใจ kind"** — comment เดิม
+  ในโค้ดเองก็ยอมรับอยู่แล้วว่า SEVEN_SEGMENT บางเคสก็เป็นตัวอักษรได้ การผูก shape ค่ากับ
+  kind แบบตายตัวจึงผิดตั้งแต่ก่อนเจอ WATER_METER แล้ว ไม่ใช่แค่ตอนนี้
+- ลบ `LAMP` ตามที่ผู้ใช้ยืนยัน (ไม่มี fixture จริงรองรับตั้งแต่แรก เป็นของที่เดาเผื่อไว้
+  ตอนออกแบบสัญญา) — กระทบ 8 ไฟล์: `contract/{points,messages}.ts`, `db/dev-inventory.ts`
+  (ลบ 2 จุด + field `states`), `scripts/mock-edge-publisher.ts`, `web/apiClient.ts`,
+  `web/components/{PointCard,PointDetail}.tsx` (เอาเงื่อนไข `kind !== "LAMP"` ที่ไม่จำเป็น
+  ออกด้วย — `hasScale` กันซ้ำอยู่แล้ว), `docs/PUBLISHING-GUIDE.md` (คู่มือที่ส่งให้ทีม AI แล้ว)
+- 🔴 เจอบั๊กเดิมที่ไม่เกี่ยวกัน: `smoke-db.ts` ข้อ "ทศนิยมละเอียด" insert ซ้ำ point_id+frame_id
+  กับข้อก่อนหน้า ชนกับ unique constraint ที่มาทีหลัง แก้ให้ใช้คนละ frame_id (`FRAME2`)
+- verify: `bun run type-check` ผ่านสะอาด (0 error) · `bun run smoke-db` ผ่านครบ 8/8 ·
+  `bun run mock-edge` + `bun run verify-contract 15` → parse ไม่ผ่าน 0/18 ข้อความ
+
+---
+
 ## เพิ่มปุ่มสลับธีมมืด/สว่าง + แก้ banner/confidence bar ที่ตกหล่นจาก D-014 (D-015)  🟡
 - deploy D-014 ขึ้น Pi แล้วเทียบกับ mock พบว่าหน้าตาไม่ตรงกัน — **banner สถานะเต็มหัวการ์ด
   กับ confidence bar ไม่เคยถูกพอร์ตจาก mock เข้า `PointCard.tsx` จริงเลย** (D-014 แก้แค่สี/

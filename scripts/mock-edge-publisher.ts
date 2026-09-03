@@ -99,20 +99,6 @@ function readPoint(spec: DevPoint): PointReading {
     (quality === "UNCERTAIN" ? 0.4 + Math.random() * 0.25 : 0.9 + Math.random() * 0.1).toFixed(2),
   );
 
-  if (spec.kind === "LAMP") {
-    const states = spec.states ?? ["UNKNOWN"];
-    const picked = states[Math.floor(Math.random() * states.length)] ?? "UNKNOWN";
-    return {
-      point_id: spec.point_id,
-      kind: "LAMP",
-      value_num: null,
-      value_text: picked,
-      unit: null,
-      confidence,
-      quality,
-    };
-  }
-
   return {
     point_id: spec.point_id,
     kind: spec.kind,

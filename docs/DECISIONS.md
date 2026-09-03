@@ -3,6 +3,37 @@
 <!-- จดทุกครั้งที่เคาะเรื่องที่ "มีทางเลือกแล้วเลือกทางหนึ่ง" — กันถกซ้ำ/ลืมเหตุผล
      1 เรื่อง = 5-8 บรรทัด พอ. ถ้าการตัดสินใจถูกล้ม → เพิ่มรายการใหม่อ้างของเก่า (ไม่ลบ) -->
 
+## D-016 เพิ่ม WATER_METER เข้าสัญญา + ลบ LAMP + เลิกผูก value_num/value_text กับ kind  (2026-09-03)
+เลือก:      `pointKindSchema` เหลือ `GAUGE`/`SEVEN_SEGMENT`/`WATER_METER` (ตัด `LAMP` ทิ้ง) ·
+            กฎ `refine` ใน `messages.ts` เปลี่ยนจาก "LAMP ใช้ value_text นอกนั้น value_num"
+            เป็น "มีค่าใดค่าหนึ่งไม่ null ก็พอ ไม่สนใจ kind" — เจ้าของ point เลือกเองว่า
+            ค่าที่อ่านได้ของจุดนั้นเป็นตัวเลขหรือข้อความ
+แทนที่จะ:   เพิ่ม `WATER_METER` เข้า enum เฉย ๆ แล้วผูก `WATER_METER` เข้ากับ `value_text`
+            แบบเดียวกับที่เคยผูก `LAMP` ไว้ (special-case เพิ่มอีกตัว)
+เพราะ:      1) เพื่อนทีม AI ทดสอบมิเตอร์น้ำจริงแล้วส่ง `value_text: "2"` มาพร้อม
+               `kind: "WATER_METER"` — validate ไม่ผ่านเพราะ enum ไม่มีค่านี้เดิม
+            2) comment เดิมใน `messages.ts` ก็ยอมรับอยู่แล้วว่า `SEVEN_SEGMENT` บางเคส
+               ก็โชว์ตัวอักษรได้ ("SEVEN_SEGMENT ที่โชว์ตัวอักษร") — แปลว่าการผูก
+               shape ของค่ากับ `kind` แบบตายตัวมันผิดตั้งแต่ก่อนเจอเคสนี้แล้ว ไม่ใช่แค่
+               ตอนนี้ ถ้าแก้แบบเพิ่ม special-case ทีละ kind จะเจอปัญหาเดิมซ้ำทุกครั้งที่มี
+               kind ใหม่ (เช่น WATER_METER ตัวถัดไปที่อาจโชว์ตัวเลขแทน) → แก้ที่ต้นตอทีเดียว
+            3) `LAMP` เดิม (`pt-a-run-lamp`, `pt-c-alarm-lamp` ใน dev-inventory) ไม่มี fixture
+               จริงรองรับ (`source: "-"` ทั้งคู่) เป็นของที่เดาเผื่อไว้ตอนออกแบบสัญญาแรก ๆ
+               ไม่ใช่ของที่ยืนยันแล้วว่ามีจริงในงานนี้ · ผู้ใช้ยืนยันให้ตัดทิ้ง
+scope:      `contract/points.ts`, `contract/messages.ts` (schema+refine) · `db/dev-inventory.ts`
+            (ลบ 2 จุด LAMP + field `states`) · `scripts/mock-edge-publisher.ts` (ลบ branch LAMP) ·
+            `web/apiClient.ts`, `web/components/{PointCard,PointDetail}.tsx` (type + เงื่อนไข
+            `kind !== "LAMP"` ที่ไม่จำเป็นอยู่แล้วเพราะ `hasScale` กันซ้ำอยู่แล้ว) ·
+            `docs/PUBLISHING-GUIDE.md` (ตัวอย่างที่ส่งให้ทีม AI แล้ว ต้องอัปเดตด้วย)
+            🔴 เจอบั๊กเดิมที่ไม่เกี่ยวข้องระหว่างเทส: `scripts/smoke-db.ts` เช็คข้อ "ทศนิยม
+            ละเอียดไม่ถูกปัด" insert ซ้ำ point_id+frame_id เดียวกับเช็คก่อนหน้า ชนกับ
+            unique constraint ที่เพิ่งมาทีหลัง (คนละเรื่องกับ LAMP) แก้ให้ใช้คนละ frame_id
+trade-off:  `WATER_METER` ยังไม่มี fixture schema ของตัวเอง (`pointFixtureSchema` มีแค่
+            GAUGE/SEVEN_SEGMENT) — จุดชนิดนี้ยังสอบเทียบกล้องไม่ได้ ต้องรอรู้ว่าจะ calibrate
+            ด้วยอะไรก่อน (bbox แบบ SEVEN_SEGMENT? หรืออย่างอื่น)
+ทบทวนเมื่อ: มี kind ใหม่อีกที่ทำให้อยากรู้ว่ากฎ "มีค่าใดค่าหนึ่งไม่ null" ยังพอไหม
+            หรือมี fixture requirement จริงสำหรับ WATER_METER
+
 ## D-015 เพิ่มปุ่มสลับธีมมืด/สว่างใน production (ล้ม scope เดิมของ D-014)  (2026-09-01)
 เลือก:      ปุ่มสลับ 2 ตัวที่ topbar เขียน `data-theme` บน `<html>` + จำค่าไว้ใน `localStorage`
             ("meter-theme") ; script เล็ก ๆ ใน `index.html` อ่านค่าก่อน React mount กันจอกระพริบขาว

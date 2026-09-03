@@ -11,7 +11,7 @@ export type PointRow = {
   camera_id: string;
   label: string | null;
   unit: string | null;
-  kind: "GAUGE" | "SEVEN_SEGMENT" | "LAMP";
+  kind: "GAUGE" | "SEVEN_SEGMENT" | "WATER_METER";
   enabled: boolean;
   min_value: number | null;
   max_value: number | null;

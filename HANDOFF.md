@@ -16,7 +16,23 @@
 
 ---
 
-## สถานะ ณ 2026-09-01
+## สถานะ ณ 2026-09-03
+
+**D-016 เพิ่ม `WATER_METER` + ลบ `LAMP` ออกจากสัญญาแล้ว** (commit ยังไม่ทำ ณ ตอนเขียนนี้ —
+ดูรายละเอียดเต็มที่ D-016 ใน `docs/DECISIONS.md`) เหตุจาก **เพื่อนทีม AI เริ่มทดสอบมิเตอร์น้ำจริง**
+บน `smsn-pi-office-01` แล้ว ส่ง `kind: "WATER_METER"` มาซึ่ง validate ไม่ผ่านของเดิม
+ตอนนี้แก้ครบ 8 ไฟล์ (contract, dev-inventory, mock-edge-publisher, web components,
+PUBLISHING-GUIDE) แล้ว — `type-check` ผ่านสะอาด, `smoke-db` 8/8, `verify-contract` parse ไม่ผ่าน 0/18
+
+🔴 **ยังไม่ได้ deploy ขึ้น Pi** — ต้อง `git pull && bun install && bun run build &&
+sudo systemctl restart meter` เหมือนเดิม ก่อน deploy ต้องรู้ว่าสคริปต์ของเพื่อนที่รันอยู่
+(`main_proecssor.py` บน `smsn-pi-office-01`) จะเริ่มถูกเก็บลง DB จริงหลัง deploy รอบนี้
+(ก่อนหน้านี้ `invalid` ขึ้นเพราะ validate ไม่ผ่าน ข้อมูลมิเตอร์น้ำไม่เคยถูกเก็บเลย)
+
+📌 **ถ้า PUBLISHING-GUIDE.md เคยส่งให้ทีม AI ไปแล้วก่อนหน้านี้ ต้องส่งฉบับใหม่ซ้ำ** —
+ตัวอย่าง `LAMP` ในนั้นใช้งานไม่ได้แล้ว เปลี่ยนเป็น `WATER_METER` หมดแล้ว
+
+## สถานะ ณ 2026-09-01 (เก่า — ดูหัวข้อ 2026-09-03 ก่อน)
 
 **T-001…T-007 · T-009 · T-012 เสร็จแล้ว** — ระบบรันจริงบน Pi 5 (systemd + kiosk autostart)
 รับข้อมูลจริงจาก edge ของทีม AI อยู่

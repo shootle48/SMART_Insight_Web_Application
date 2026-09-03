@@ -69,7 +69,7 @@ export function shouldStore(r: PointReading, scale: Scale, now: number): Throttl
   if (since >= MAX_GAP_MS) return { store: true, reason: "ครบรอบบังคับเก็บ" };
   if (since < MIN_INTERVAL_MS) return { store: false, reason: "ถี่เกินเพดาน" };
 
-  // ค่าที่เป็นข้อความ (LAMP / TEXT) — เปลี่ยนเมื่อไหร่คือเปลี่ยนจริง ไม่มี deadband
+  // ค่าที่เป็นข้อความ (เช่น WATER_METER) — เปลี่ยนเมื่อไหร่คือเปลี่ยนจริง ไม่มี deadband
   if (r.value_text !== null || prev.value_text !== null) {
     return r.value_text !== prev.value_text
       ? { store: true, reason: "ข้อความเปลี่ยน" }

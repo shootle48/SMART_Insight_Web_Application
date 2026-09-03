@@ -11,7 +11,7 @@ import { z } from "zod";
 export const pointKindSchema = z.enum([
   "GAUGE", // หน้าปัดเข็ม — สอบเทียบด้วยจุดศูนย์กลาง+รัศมี+ช่วงมุม
   "SEVEN_SEGMENT", // จอตัวเลข 7 ส่วน — สอบเทียบด้วยกรอบสี่เหลี่ยม
-  "LAMP", // ไฟสถานะ — อ่านออกมาเป็นสี/สถานะ ไม่ใช่ตัวเลข
+  "WATER_METER", // มิเตอร์น้ำ — อ่านออกมาเป็นข้อความ (เช่นเลขนับ) ยังไม่มี fixture schema ของตัวเอง
 ]);
 export type PointKind = z.infer<typeof pointKindSchema>;
 
@@ -44,16 +44,13 @@ export const sevenSegmentFixtureSchema = z.object({
   decimals: z.number().int().min(0).max(4), // ตำแหน่งทศนิยมที่คาดหวัง
 });
 
-export const lampFixtureSchema = z.object({
-  kind: z.literal("LAMP"),
-  bbox: bboxSchema,
-  states: z.array(z.string().min(1)).min(2), // เช่น ["OFF","GREEN","RED"]
-});
+// WATER_METER ยังไม่มี fixture schema ของตัวเอง — ตอนนี้จุดชนิดนี้ยังไม่มีการสอบเทียบ
+// กล้อง (fixture) ให้ตั้ง ต้องเป็น null เสมอ เพิ่มทีหลังเมื่อรู้ว่าจะสอบเทียบด้วยอะไร
+// (bbox แบบ SEVEN_SEGMENT? หรือแบบอื่น — ยังไม่มีข้อมูลพอตัดสิน)
 
 export const pointFixtureSchema = z.discriminatedUnion("kind", [
   gaugeFixtureSchema,
   sevenSegmentFixtureSchema,
-  lampFixtureSchema,
 ]);
 export type PointFixture = z.infer<typeof pointFixtureSchema>;
 
@@ -66,7 +63,7 @@ export const pointConfigSchema = z.object({
   unit: z.string().min(1).nullable(),
 
   // สเกลที่หน้าปัดอ่านได้ — UI ใช้วาดเกจ, AI ใช้แปลงมุมเข็มเป็นค่า
-  // null ได้สำหรับจุดที่ไม่มีสเกล (LAMP) หรือจุดที่ยังไม่มีคนตั้งค่า
+  // null ได้สำหรับจุดที่ไม่มีสเกล (เช่น WATER_METER ที่อ่านเป็นข้อความ) หรือจุดที่ยังไม่มีคนตั้งค่า
   min_value: z.number().nullable(),
   max_value: z.number().nullable(),
 

@@ -24,8 +24,11 @@ export function PointCard({ point, spark, now, onOpen, selected }: Props) {
   const uncertain = point.quality === "UNCERTAIN";
   const never = point.captured_at === null;
 
+  // ไม่ต้องเช็ค kind เลย — จุดที่ไม่มีสเกล (min/max เป็น null) ไม่มีทางวาดเกจได้อยู่แล้ว
+  // ไม่ว่าจะเป็นชนิดไหน (เดิมเคยเช็ค kind !== "LAMP" เพิ่ม แต่ WATER_METER ก็ไม่มีสเกลเหมือนกัน
+  // ผูกกับ kind เฉพาะเจาะจงแบบนั้นจะต้องคอยตามแก้ทุกครั้งที่มีชนิดใหม่)
   const hasScale = point.min_value !== null && point.max_value !== null;
-  const showGauge = point.kind !== "LAMP" && hasScale;
+  const showGauge = hasScale;
   const over =
     point.value_num !== null && hasScale && (point.value_num < point.min_value! || point.value_num > point.max_value!);
 

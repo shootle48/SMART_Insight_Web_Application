@@ -116,7 +116,7 @@ export function PointDetail({ point, now, onClose }: Props) {
       </header>
 
       <div className="d-now">
-        {hasScale && point.kind !== "LAMP" && (
+        {hasScale && (
           <Gauge
             value={unreadable ? null : point.value_num}
             min={point.min_value!}

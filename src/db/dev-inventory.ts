@@ -5,7 +5,10 @@
 // ซึ่งดูเหมือนบั๊กของ ingest ทั้งที่เป็นแค่ข้อมูลตั้งต้นไม่ตรงกัน
 //
 // ช่วงค่าและหน่วยทุกตัวยกมาจาก fixture จริงใน ../../../bench/samples.json ไม่ได้แต่งเอง
-// เก็บเคสยากไว้ครบโดยตั้งใจ: ช่วงติดลบ · ช่วงเล็กมาก · หน้าปัดไม่มีหน่วย · ไฟสถานะ
+// เก็บเคสยากไว้ครบโดยตั้งใจ: ช่วงติดลบ · ช่วงเล็กมาก · หน้าปัดไม่มีหน่วย
+//
+// ไม่มีจุดตัวอย่างของ WATER_METER ในนี้ — bench/samples.json ยังไม่มีข้อมูลจริงรองรับ
+// (กฎของไฟล์นี้คือห้ามแต่งค่าขึ้นเอง) เพิ่มได้เมื่อมี fixture จริงจากทีม AI
 //
 // ลบไฟล์นี้ทิ้งเมื่อ edge จริงมาแล้วและมีหน้าจอตั้งค่าจุดวัดเอง
 
@@ -19,8 +22,6 @@ export type DevPoint = {
   /** สำหรับ GAUGE / SEVEN_SEGMENT */
   min_value?: number;
   max_value?: number;
-  /** สำหรับ LAMP — ตัวแรกคือสถานะปกติ */
-  states?: string[];
   /** ที่มาของช่วงค่า อ้างชื่อไฟล์ใน bench/samples.json */
   source: string;
 };
@@ -40,7 +41,6 @@ export const DEV_DEVICES: DevDevice[] = [
     points: [
       { point_id: "pt-a-boiler-pressure", label: "แรงดันหม้อไอน้ำ", kind: "GAUGE", unit: "bar", min_value: 0, max_value: 4, source: "bar_gauge_f00300.png" },
       { point_id: "pt-a-header-pressure", label: "แรงดันท่อรวม", kind: "GAUGE", unit: "psi", min_value: 0, max_value: 500, source: "High-Pressure-Gauge-Meter.jpg" },
-      { point_id: "pt-a-run-lamp", label: "ไฟสถานะเดินเครื่อง", kind: "LAMP", unit: null, states: ["GREEN", "GREEN", "GREEN", "OFF"], source: "-" },
     ],
   },
   {
@@ -61,7 +61,6 @@ export const DEV_DEVICES: DevDevice[] = [
       { point_id: "pt-c-manifold-bp", label: "แรงดันแมนิโฟลด์", kind: "GAUGE", unit: "mmHg", min_value: 20, max_value: 300, source: "bp_gauge_f00200.png" },
       { point_id: "pt-c-control-volt", label: "แรงดันวงจรควบคุม", kind: "GAUGE", unit: "V", min_value: -5, max_value: 15, source: "51biXXAiKIL (ช่วงติดลบ)" },
       { point_id: "pt-c-clearance", label: "ระยะห่างชิ้นงาน", kind: "GAUGE", unit: "mm", min_value: 0, max_value: 0.099, source: "images (2).jpg (ช่วงเล็กมาก + truth เกินสเกล)" },
-      { point_id: "pt-c-alarm-lamp", label: "ไฟแจ้งเตือน", kind: "LAMP", unit: null, states: ["OFF", "OFF", "OFF", "OFF", "RED"], source: "-" },
     ],
   },
 ];

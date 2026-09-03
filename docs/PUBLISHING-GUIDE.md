@@ -65,10 +65,10 @@ meter/<device_id>/device_status      ← ออนไลน์/ออฟไล�
       "quality": "OK"
     },
     {
-      "point_id": "pt-a-run-lamp",
-      "kind": "LAMP",
+      "point_id": "pt-water-meter-01",
+      "kind": "WATER_METER",
       "value_num": null,
-      "value_text": "OFF",
+      "value_text": "2",
       "unit": null,
       "confidence": 0.97,
       "quality": "OK"
@@ -86,8 +86,8 @@ meter/<device_id>/device_status      ← ออนไลน์/ออฟไล�
 | `frame_id` | 🔴 **ห้ามซ้ำ** ระบบใช้เป็นกุญแจกันข้อมูลซ้ำ ถ้าซ้ำเฟรมใหม่จะถูกกลืนหายเงียบ ๆ · ใช้ `f"{device_id}-{time.time_ns()}"` ก็พอ |
 | `captured_at` | ISO8601 **พร้อม timezone** เช่น `2026-08-27T11:33:26+07:00` · ⚠️ ต้องตั้ง NTP บนเครื่อง edge ไม่งั้นกราฟย้อนหลังเพี้ยน |
 | `point_id` | ชื่อจุดวัดที่คุณตั้งเอง — **ตั้งได้เลยไม่ต้องรอใคร** ระบบสร้างให้อัตโนมัติ แล้วขึ้นบนจอว่า "ยังไม่ตั้งค่า" · ขอให้คงที่ |
-| `kind` | `GAUGE` (หน้าปัดเข็ม) · `SEVEN_SEGMENT` (จอตัวเลข) · `LAMP` (ไฟสถานะ) |
-| `value_num` / `value_text` | GAUGE/SEVEN_SEGMENT ใส่ `value_num` · LAMP ใส่ `value_text` · อีกช่องเป็น `null` |
+| `kind` | `GAUGE` (หน้าปัดเข็ม) · `SEVEN_SEGMENT` (จอตัวเลข) · `WATER_METER` (มิเตอร์น้ำ) — ตัวนี้บอกแค่ "หน้าปัดชนิดไหน" ไม่ผูกว่าต้องใส่ค่าช่องไหน |
+| `value_num` / `value_text` | เลือกช่องตาม**ค่าที่อ่านได้** ไม่ใช่ตาม `kind` — ค่าเป็นตัวเลขใส่ `value_num`, เป็นข้อความ (เช่นเลขนับของมิเตอร์น้ำ) ใส่ `value_text` · ต้องมีอย่างน้อยช่องใดช่องหนึ่งไม่ใช่ `null` (ยกเว้น `quality: "UNREADABLE"` ที่ปล่อยทั้งคู่เป็น `null` ได้) · อีกช่องที่ไม่ใช้เป็น `null` |
 | `unit` | `"bar"`, `"psi"`, `"mmHg"`, `"V"`, `"RPM"`, `"mm"` … · ไม่มีหน่วยใส่ `null` (อย่าใส่ `"-"`) |
 | `confidence` | 0.0–1.0 หรือ `null` ถ้าโมเดลไม่ได้ให้มา |
 | `quality` | `OK` · `UNCERTAIN` (อ่านได้แต่ไม่มั่นใจ) · `UNREADABLE` (อ่านไม่ได้เลย) |
@@ -240,10 +240,11 @@ def unreadable(point_id, unit=None, kind="GAUGE"):
     }
 
 
-def lamp(point_id, state, conf=1.0):
+def text_reading(point_id, kind, text, conf=1.0):
+    """ค่าที่อ่านได้เป็นข้อความ ไม่ใช่ตัวเลข — เช่นเลขนับของมิเตอร์น้ำ"""
     return {
-        "point_id": point_id, "kind": "LAMP",
-        "value_num": None, "value_text": state,
+        "point_id": point_id, "kind": kind,
+        "value_num": None, "value_text": text,
         "unit": None, "confidence": conf, "quality": "OK",
     }
 
@@ -259,7 +260,7 @@ try:
             readings.append(gauge("pt-a-boiler-pressure", value, "bar", conf))
         except Exception:
             readings.append(unreadable("pt-a-boiler-pressure", "bar"))
-        readings.append(lamp("pt-a-run-lamp", "GREEN"))
+        readings.append(text_reading("pt-water-meter-01", "WATER_METER", "2"))
         # ↑↑↑
 
         if readings:

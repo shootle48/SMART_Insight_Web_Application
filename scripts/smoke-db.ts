@@ -5,7 +5,7 @@
 // ไม่ใช่แค่ "ตารางสร้างได้" — ตรวจข้อที่ถ้าผิดแล้วข้อมูลจะเพี้ยนแบบเงียบ ๆ
 // ทุกเคสเขียนแล้วลบทิ้ง ไม่ทิ้งขยะไว้ใน DB
 
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db, sql } from "../src/db/index";
 import { devices, points, readings } from "../src/db/schema";
 import { DEV_DEVICES, DEV_POINT_COUNT } from "../src/db/dev-inventory";
@@ -17,9 +17,14 @@ const check = (name: string, ok: boolean, detail = "") => {
 };
 
 const FRAME = "frm-smoke-test";
+// เคส 4 (ทศนิยมละเอียด) ต้องคนละ frame_id กับเคส 3 (ค่านอกสเกล) — จุดเดียวกัน
+// (pt-c-clearance) ถ้าใช้ frame_id เดียวกันจะชน unique constraint (point_id, frame_id)
+// ทันที เพราะรับรู้กันว่าเป็นแถวซ้ำ ทั้งที่ตั้งใจให้เป็นคนละเฟรม
+const FRAME2 = "frm-smoke-test-2";
 
 // เก็บกวาดของรอบก่อน เผื่อรอบที่แล้วตายกลางคัน
 await db.delete(readings).where(eq(readings.frame_id, FRAME));
+await db.delete(readings).where(eq(readings.frame_id, FRAME2));
 
 // ---- 1. seed ลงครบไหม -----------------------------------------------------
 const deviceRows = await db.select().from(devices);
@@ -74,18 +79,17 @@ check("ค่านอกสเกลเก็บได้ ไม่ถูก re
 await db.insert(readings).values({
   point_id: "pt-c-clearance",
   device_id: "edge-03",
-  frame_id: FRAME,
+  frame_id: FRAME2,
   captured_at: new Date(Date.now() + 1),
   value_num: 0.0987654321,
   unit: "mm",
   quality: "OK",
 });
-const precise = await db
+const [precise] = await db
   .select()
   .from(readings)
-  .where(and(eq(readings.frame_id, FRAME), eq(readings.point_id, "pt-c-clearance")));
-const kept = precise.find((r) => r.value_num !== 0.2);
-check("ทศนิยมละเอียดไม่ถูกปัด", kept?.value_num === 0.0987654321, `ได้ ${kept?.value_num}`);
+  .where(and(eq(readings.frame_id, FRAME2), eq(readings.point_id, "pt-c-clearance")));
+check("ทศนิยมละเอียดไม่ถูกปัด", precise?.value_num === 0.0987654321, `ได้ ${precise?.value_num}`);
 
 // ---- 5. received_at ต้องเติมเองโดยไม่ต้องส่งมา ----------------------------
 // ใช้จับ clock drift ของ edge (OPEN-5) ถ้าลืมเติมจะไม่มีอะไรเทียบ
@@ -111,7 +115,11 @@ check("point_id ที่ไม่รู้จักถูก FK ปฏิเส
 
 // ---- เก็บกวาด -------------------------------------------------------------
 await db.delete(readings).where(eq(readings.frame_id, FRAME));
-const leftover = await db.select().from(readings).where(eq(readings.frame_id, FRAME));
+await db.delete(readings).where(eq(readings.frame_id, FRAME2));
+const leftover = await db
+  .select()
+  .from(readings)
+  .where(inArray(readings.frame_id, [FRAME, FRAME2]));
 check("ลบข้อมูลทดสอบหมดแล้ว", leftover.length === 0);
 
 console.log(failed === 0 ? "\n✅ ผ่านครบ" : `\n❌ ไม่ผ่าน ${failed} ข้อ`);
