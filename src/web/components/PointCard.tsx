@@ -105,7 +105,10 @@ export function PointCard({ point, spark, now, onOpen, selected }: Props) {
           {hasEvidence ? (
             <img
               className="card-thumb"
-              src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest`}
+              // ผูก query string เข้ากับ frame_id — URL เดิมทุกครั้งเบราว์เซอร์จะไม่ยิงคำขอใหม่ให้เอง
+              // แม้ไฟล์บนเซิร์ฟเวอร์เปลี่ยนไปแล้ว (ต่างจากตัวเลขที่ผ่าน React state ให้เอง)
+              // frame_id เปลี่ยนทุกครั้งที่ SSE ส่งค่าใหม่เข้ามาพอดี ไม่ต้อง poll เพิ่มเอง
+              src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest${point.frame_id ? `?f=${encodeURIComponent(point.frame_id)}` : ""}`}
               alt=""
               onError={() => setHasEvidence(false)}
             />

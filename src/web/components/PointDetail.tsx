@@ -162,7 +162,9 @@ export function PointDetail({ point, now, onClose }: Props) {
       {hasEvidence ? (
         <img
           className="d-evidence"
-          src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest`}
+          // เหตุผลเดียวกับใน PointCard.tsx — ผูกกับ frame_id กัน URL ค้างเดิมจนเบราว์เซอร์
+          // ไม่ยอมโหลดภาพใหม่ตาม
+          src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest${point.frame_id ? `?f=${encodeURIComponent(point.frame_id)}` : ""}`}
           alt={`ภาพจากกล้องของ ${point.label ?? point.point_id}`}
           onError={() => setHasEvidence(false)}
         />
