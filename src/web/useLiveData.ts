@@ -2,11 +2,9 @@
 //
 // จอ kiosk เปิดค้างเป็นเดือน ทุกอย่างในนี้จึงต้องทนต่อการหลุด/ต่อใหม่:
 //   - EventSource ต่อใหม่เองอัตโนมัติ แต่ระหว่างที่หลุดค่าจะเก่า → ต้องโหลดใหม่ตอนกลับมา
-//   - ring buffer ของ sparkline ต้องมีเพดาน ไม่งั้นหน่วยความจำโตไปเรื่อยจนแท็บตาย
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  fetchAllHistory,
   fetchDevices,
   fetchPoints,
   type DeviceRow,
@@ -15,17 +13,11 @@ import {
   type PointRow,
 } from "./apiClient";
 
-/** เก็บย้อนหลังต่อจุดไว้เท่านี้ — พอสำหรับ sparkline และมีเพดานชัดเจน */
-const SPARK_LIMIT = 120;
-
-export type SparkPoint = { t: number; v: number | null };
-
 export type ConnState = "connecting" | "live" | "lost";
 
 export function useLiveData() {
   const [points, setPoints] = useState<PointRow[]>([]);
   const [devices, setDevices] = useState<DeviceRow[]>([]);
-  const [spark, setSpark] = useState<Record<string, SparkPoint[]>>({});
   const [conn, setConn] = useState<ConnState>("connecting");
   const [error, setError] = useState<string | null>(null);
 
@@ -43,24 +35,6 @@ export function useLiveData() {
       setPoints(p);
       setDevices(d);
       setError(null);
-
-      // เติมเส้นย้อนหลังให้ sparkline มีอะไรให้ดูตั้งแต่วินาทีแรก
-      // ไม่งั้นจอที่เพิ่งบูตจะว่างเปล่าจนกว่าจะสะสมค่าได้เอง
-      //
-      // ⚠️ ใช้ endpoint รวม ไม่ยิงทีละจุด — จำนวนจุดต่างกันทุกโรงงาน
-      // ถ้ายิงทีละจุด 30 จุดจะกลายเป็น 30 requests ทุกครั้งที่ใครเปิดหน้า
-      try {
-        const rows = await fetchAllHistory("15m");
-        const grouped: Record<string, SparkPoint[]> = {};
-        for (const pt of p) grouped[pt.point_id] = [];
-        for (const r of rows) {
-          (grouped[r.point_id] ??= []).push({ t: new Date(r.bucket).getTime(), v: r.avg_value });
-        }
-        setSpark(grouped);
-      } catch {
-        // sparkline ว่างไม่ใช่เรื่องคอขาดบาดตาย — ค่าปัจจุบันยังแสดงได้ตามปกติ
-        setSpark(Object.fromEntries(p.map((pt) => [pt.point_id, []])));
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -117,17 +91,6 @@ export function useLiveData() {
           return hit ? { ...d, last_frame_at: hit.captured_at } : d;
         }),
       );
-
-      setSpark((prev) => {
-        const next = { ...prev };
-        for (const r of list) {
-          const arr = next[r.point_id] ? [...next[r.point_id]!] : [];
-          arr.push({ t: new Date(r.captured_at).getTime(), v: r.value_num });
-          // ตัดหัวทิ้งเมื่อเกินเพดาน — ring buffer แบบง่ายที่สุดที่ยังอ่านออก
-          next[r.point_id] = arr.length > SPARK_LIMIT ? arr.slice(arr.length - SPARK_LIMIT) : arr;
-        }
-        return next;
-      });
     });
 
     es.addEventListener("device", (ev) => {
@@ -155,5 +118,5 @@ export function useLiveData() {
     setPoints((prev) => prev.map((p) => (p.point_id === pointId ? { ...p, ...patch } : p)));
   }, []);
 
-  return { points, devices, spark, conn, error, reload: loadAll, patchPoint };
+  return { points, devices, conn, error, reload: loadAll, patchPoint };
 }

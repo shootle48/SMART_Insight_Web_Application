@@ -6,6 +6,20 @@
 
 ---
 
+## ล้าง ring buffer ของ sparkline เดิมที่ค้างทำงานทั้งที่ไม่มีใครใช้แล้ว  🟢
+- ตามที่ค้างไว้จากรอบก่อน (เอา gauge/sparkline ออกจาก UI แต่ยังไม่ได้ล้าง state เบื้องหลัง)
+- `useLiveData.ts` — เอา state `spark`, `SPARK_LIMIT`, type `SparkPoint`, และการยิง
+  `fetchAllHistory("15m")` ตอนโหลดหน้าออกทั้งหมด (เดิมยิง 1 request รวมทุกจุด + ประมวลผล
+  ทุก SSE event เข้า ring buffer โดยไม่มีใครอ่านผลลัพธ์เลย)
+- `apiClient.ts` — ลบ `fetchAllHistory`/`BatchHistoryRow` ที่ไม่มีคนเรียกแล้ว
+- `server/api/points.ts` — ลบ route `GET /api/points/history` (endpoint รวมสำหรับ sparkline
+  โดยเฉพาะ) ทิ้ง ; endpoint รายจุด `GET /api/points/:pointId/history` ที่แผงรายละเอียดใช้อยู่
+  ไม่กระทบ คนละ route กัน
+- verify: `bun run type-check` ผ่านสะอาด ; เปิดเบราว์เซอร์จริงเช็คหน้ารวมและแผงรายละเอียด
+  (กราฟประวัติรายจุด) ยังทำงานปกติ ไม่มี request ยิงไป `/api/points/history` อีกแล้ว
+
+---
+
 ## ตั้งค่าจุดวัด (label/หน่วย/สเกล) จากหน้าเว็บได้เอง  🟡
 - จุดที่ ingest สร้างอัตโนมัติ (`enabled=false`) ต้องมีคนมาตั้ง label/หน่วย/สเกลให้ก่อนถึงจะ
   ขึ้นจอหลัก — เดิมทำได้ทางเดียวคือ SQL ตรง ๆ บน Pi ตอนนี้ทำในหน้าเว็บได้เลย

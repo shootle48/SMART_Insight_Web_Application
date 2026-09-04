@@ -82,29 +82,12 @@ async function getJson<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** แถวจาก endpoint รวม — ใช้เติม sparkline ของทุกจุดในคำขอเดียว */
-export type BatchHistoryRow = {
-  point_id: string;
-  bucket: string;
-  avg_value: number | null;
-  unreadable: number;
-};
-
 export const fetchPoints = () => getJson<{ points: PointRow[] }>("/api/points").then((r) => r.points);
 export const fetchDevices = () => getJson<{ devices: DeviceRow[] }>("/api/devices").then((r) => r.devices);
 export const fetchHistory = (pointId: string, range = "15m") =>
   getJson<{ buckets: HistoryBucket[] }>(
     `/api/points/${encodeURIComponent(pointId)}/history?range=${range}`,
   ).then((r) => r.buckets);
-
-/**
- * ประวัติย่อของทุกจุดในคำขอเดียว
- *
- * ใช้แทนการยิงทีละจุด เพราะจำนวนจุดต่างกันทุกโรงงาน (ขายเป็น package)
- * 30 จุด = 30 requests ตอนโหลดหน้า ซึ่งจอ kiosk จะบูตช้าและ Pi โดนกระแทก
- */
-export const fetchAllHistory = (range = "15m") =>
-  getJson<{ rows: BatchHistoryRow[] }>(`/api/points/history?range=${range}`).then((r) => r.rows);
 
 export type PointConfigInput = {
   label: string;
