@@ -154,6 +154,22 @@ export function PointDetail({ point, now, onClose }: Props) {
         </div>
       </div>
 
+      {/* ภาพล่าสุดจากกล้อง (T-011) — ตั้งใจไว้ติดกับตัวเลขบนสุด ไม่ใช่ท้ายแผง เพราะเป็น
+          สิ่งที่คนอยากเห็นทันทีที่เปิดแผงมา (เทียบภาพกับตัวเลขว่า AI อ่านตรงไหม) ไม่ใช่
+          ของที่ต้องเลื่อนหาหลังกราฟ/สถิติย้อนหลัง — ไม่ผูกกับสถานะอ่านได้/ไม่ได้ตอนนี้
+          มีภาพก็โชว์ ไม่มีก็บอกตรง ๆ ว่ายังไม่มี */}
+      <div className="d-lab">ภาพล่าสุดจากกล้อง</div>
+      {hasEvidence ? (
+        <img
+          className="d-evidence"
+          src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest`}
+          alt={`ภาพจากกล้องของ ${point.label ?? point.point_id}`}
+          onError={() => setHasEvidence(false)}
+        />
+      ) : (
+        <div className="d-snap">📷 ยังไม่มีภาพของจุดนี้</div>
+      )}
+
       <div className="d-chips">
         {RANGES.map((r) => (
           <button
@@ -218,19 +234,6 @@ export function PointDetail({ point, now, onClose }: Props) {
           <div className="v v-sm">{point.frame_id ?? "—"}</div>
         </div>
       </div>
-
-      {/* ภาพล่าสุดจากกล้อง (T-011) — เอาไว้ให้คนตรวจสอบเองว่า AI อ่านตรงกับที่เห็นในภาพไหม
-          ไม่ผูกกับสถานะอ่านได้/ไม่ได้ตอนนี้ — มีภาพก็โชว์ ไม่มีก็บอกตรง ๆ ว่ายังไม่มี */}
-      {hasEvidence ? (
-        <img
-          className="d-evidence"
-          src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest`}
-          alt={`ภาพจากกล้องของ ${point.label ?? point.point_id}`}
-          onError={() => setHasEvidence(false)}
-        />
-      ) : (
-        <div className="d-snap">📷 ยังไม่มีภาพของจุดนี้</div>
-      )}
     </aside>
   );
 }
