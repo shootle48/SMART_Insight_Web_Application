@@ -22,10 +22,14 @@ progress:   2026-09-04 topic จริงจากทีม AI ต่างจ�
             `~/meter-evidence/<device>/<point>/<frame_id>.jpg` + กันภาพใหญ่เกิน (2MB
             default) เสร็จแล้ว ทดสอบจริงด้วย mosquitto_pub บนเครื่อง dev ผ่าน —
             `ingest.invalid` นิ่ง 0 ตลอด ตรง done-when
-            🔴 เพื่อนทีม AI ยังส่งภาพจริงไม่ได้ เพราะโค้ดฝั่งเขามีเงื่อนไข "ส่งเฉพาะ
-            quality != OK" แต่โมเดลส่ง quality:"OK" ตายตัวทุกครั้งไม่ว่า confidence
-            จะต่ำแค่ไหน (เจอ confidence 0.013 แต่ quality ยัง OK) — แจ้งให้แก้แล้ว
-            **ที่เหลือยังไม่ทำ:** แสดงผลบนการ์ด/แผงรายละเอียด · retention แยกสำหรับภาพ ·
+            2026-09-04 เพื่อนแก้ quality gate แล้ว ส่งภาพจริงสำเร็จ — เห็นบน Pi 13 ไฟล์
+            ที่ `~/meter-evidence/edge-01/pt-7segment-01/*.jpg` ยืนยันด้วย magic number
+            (`FF D8 FF E0 ... JFIF`) ว่าเป็น JPEG จริง ; เพิ่ม `GET /api/evidence/:pointId/
+            latest` (เช็ค device_id จาก DB ก่อนแตะ filesystem กัน point_id ปลอม, เลือกไฟล์
+            ล่าสุดตาม mtime) + แสดงใน `PointDetail.tsx` แทน placeholder เดิม พร้อม fallback
+            เมื่อจุดนั้นยังไม่มีภาพ ; ทดสอบทั้ง 3 เคส (มีภาพ/ไม่มีภาพ/point_id ปลอม) ผ่านหมด
+            ทั้งสองธีม
+            **ที่เหลือยังไม่ทำ:** retention แยกสำหรับภาพ (ตอนนี้เก็บไม่มีวันลบ) ·
             `message_size_limit` ใน mosquitto.conf · ยังไม่ deploy ขึ้น Pi
 
 ## T-010 [P2] pg_dump cron ออกนอกเครื่อง — doing

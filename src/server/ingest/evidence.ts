@@ -11,7 +11,9 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const EVIDENCE_DIR = process.env.EVIDENCE_DIR ?? join(homedir(), "meter-evidence");
+// export ไว้ให้ api/evidence.ts เรียกใช้ path เดียวกัน — ห้ามมีค่า default แยกกันสองที่
+// ไม่งั้นวันหนึ่งตั้ง EVIDENCE_DIR ผ่าน env แล้วฝั่งอ่านกับฝั่งเขียนจะมองคนละโฟลเดอร์
+export const EVIDENCE_DIR = process.env.EVIDENCE_DIR ?? join(homedir(), "meter-evidence");
 
 // ยังไม่ได้ตั้ง message_size_limit ใน mosquitto.conf (ค่า default ของ broker = ไม่จำกัด)
 // เช็คขนาดตรงนี้เป็นเกราะชั้นแรกกันภาพใหญ่ผิดปกติเขียน SD จนเปลืองโดยไม่ตั้งใจ

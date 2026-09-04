@@ -32,6 +32,12 @@ export function PointDetail({ point, now, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(Math.round(AUTO_CLOSE_MS / 1000));
 
+  // เริ่มด้วย true (ลอง <img> ก่อนเสมอ) แล้วให้ onError สลับเป็น false ถ้าจุดนี้ไม่มีภาพ
+  // (404) — ต้อง reset ทุกครั้งที่สลับจุด ไม่งั้นค้างจากจุดก่อนหน้า เพราะ component นี้
+  // ไม่ได้ unmount ตอนกดการ์ดอื่นขณะแผงเปิดอยู่ (state เดิมจะค้างข้ามจุด)
+  const [hasEvidence, setHasEvidence] = useState(true);
+  useEffect(() => setHasEvidence(true), [point.point_id]);
+
   const lastTouch = useRef(Date.now());
   const touch = useCallback(() => {
     lastTouch.current = Date.now();
@@ -213,8 +219,18 @@ export function PointDetail({ point, now, onClose }: Props) {
         </div>
       </div>
 
-      {/* ที่ว่างสำหรับภาพตอนอ่านไม่ออก — รอ T-011 (ตกลงกับทีม AI แล้วว่าส่งผ่าน MQTT topic แยก) */}
-      <div className="d-snap">📷 ภาพตอนอ่านไม่ออก — ยังไม่เปิดใช้ (T-011)</div>
+      {/* ภาพล่าสุดจากกล้อง (T-011) — เอาไว้ให้คนตรวจสอบเองว่า AI อ่านตรงกับที่เห็นในภาพไหม
+          ไม่ผูกกับสถานะอ่านได้/ไม่ได้ตอนนี้ — มีภาพก็โชว์ ไม่มีก็บอกตรง ๆ ว่ายังไม่มี */}
+      {hasEvidence ? (
+        <img
+          className="d-evidence"
+          src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest`}
+          alt={`ภาพจากกล้องของ ${point.label ?? point.point_id}`}
+          onError={() => setHasEvidence(false)}
+        />
+      ) : (
+        <div className="d-snap">📷 ยังไม่มีภาพของจุดนี้</div>
+      )}
     </aside>
   );
 }

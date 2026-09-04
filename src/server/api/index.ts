@@ -10,6 +10,7 @@ import { ingestStats } from "../ingest/index";
 import { pointsApi } from "./points";
 import { devicesApi } from "./devices";
 import { streamApi, sseClientCount } from "./stream";
+import { evidenceApi } from "./evidence";
 import { retentionStatus, readingsFootprint } from "../retention";
 import { backupStatus } from "../backup-status";
 
@@ -66,3 +67,4 @@ api.get("/health", async (c) => {
 api.route("/points", pointsApi);
 api.route("/devices", devicesApi);
 api.route("/stream", streamApi);
+api.route("/evidence", evidenceApi);

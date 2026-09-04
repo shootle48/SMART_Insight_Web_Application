@@ -6,6 +6,22 @@
 
 ---
 
+## แสดงภาพ evidence ในแผงรายละเอียด (T-011, doing)  🟢
+- เพื่อนแก้ quality gate แล้ว **ส่งภาพจริงสำเร็จ** — ยืนยันบน Pi ด้วย magic number
+  (`FF D8 FF E0 ... JFIF`) ว่าเป็น JPEG จริง ไม่ใช่ขยะ
+- เพิ่ม `GET /api/evidence/:pointId/latest` ([src/server/api/evidence.ts](src/server/api/evidence.ts))
+  — เช็ค `device_id` จาก DB ก่อนแตะ filesystem เสมอ (point_id ที่ไม่มีจริงจะ 404 ก่อนเคย
+  ต่อ path เลย ไม่ต้อง sanitize เพิ่ม) เลือกไฟล์ล่าสุดตาม mtime ไม่ใช่ชื่อไฟล์
+- `PointDetail.tsx` — แทนที่ placeholder เดิมด้วย `<img>` จริง มี fallback ข้อความเมื่อ
+  จุดนั้นยังไม่มีภาพ (404) ; ต้อง reset state ตอนสลับจุดเอง เพราะ component ไม่ unmount
+  ระหว่างกดการ์ดอื่นขณะแผงเปิดค้างอยู่
+- verify: `bun run type-check` ผ่านสะอาด ; ทดสอบ endpoint ตรง ๆ ครบ 3 เคส (มีภาพ/ไม่มีภาพ/
+  point_id ปลอม) ; เปิดเบราว์เซอร์จริงเห็นภาพขึ้นถูกทั้งธีมสว่าง/มืด
+- ยังไม่ทำ: retention แยกสำหรับภาพ (ตอนนี้เก็บไม่มีวันลบ), `message_size_limit` ใน
+  mosquitto.conf, ยังไม่ deploy ขึ้น Pi
+
+---
+
 ## รับภาพ evidence จาก MQTT + เซฟลงดิสก์ (T-011, doing)  🟡
 - topic จริงจากทีม AI ต่างจากที่เดาไว้ตอน D-013: `meter/<device>/evidence/<frame_id>/
   <point_id>/<kind>` (6 ระดับ) ไม่ใช่ `snapshot/<frame_id>` (4 ระดับ) — พิสูจน์ด้วย
