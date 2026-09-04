@@ -6,16 +6,27 @@
 
 # Active
 
-## T-011 [P2] รับ snapshot จาก edge — todo
+## T-011 [P2] รับ snapshot จาก edge — doing
 why:        ภาพตอน UNREADABLE คือหลักฐานว่าทำไมอ่านไม่ออก ซึ่งเป็นกุญแจแก้ปัญหา 47% ที่ค้างอยู่
-scope:      subscribe `<prefix>/+/snapshot/+` (**คนละ subscription กับ `meter/+/+` เดิม** เพราะ
-            topic ภาพมี 4 ระดับ ของเดิมจับได้แค่ 3) · เก็บเป็นไฟล์บนดิสก์ ไม่ลง DB
+scope:      subscribe `<prefix>/+/evidence/+/+/+` (**คนละ subscription กับ `meter/+/+` เดิม**
+            เพราะ topic ภาพมี 6 ระดับ ของเดิมจับได้แค่ 3) · เก็บเป็นไฟล์บนดิสก์ ไม่ลง DB
             (ไม่งั้น pg_dump บวมตาม) · retention แยกและสั้นกว่าของ readings · แสดงบนการ์ด
             · ตั้ง `message_size_limit` ใน mosquitto.conf (default = ไม่จำกัด)
 done-when:  edge ส่งภาพตอนอ่านไม่ออก แล้วกดดูจากการ์ดบนจอได้ · ปริมาณต่อวันไม่เกิน ~100 MB ·
             `ingest.invalid` ไม่ขยับ (ภาพต้องไม่ไหลเข้า parser ของ meter_frame)
 note:       เคาะทาง B แล้ว (D-013) · ⚠️ ห้าม subscribe `meter/#` เพราะภาพจะเข้า parseTopic
             แล้วถูกนับเป็น invalid ทำให้ตัวเลขที่ใช้เฝ้าดูสัญญาเพี้ยน
+progress:   2026-09-04 topic จริงจากทีม AI ต่างจาก D-013 ที่เดาไว้ (`evidence/<frame_id>/
+            <point_id>/<kind>` 6 ระดับ ไม่ใช่ `snapshot/<frame_id>` 4 ระดับ) — อัปเดต
+            `topics.ts` ตามของจริงแล้ว · เขียน `ingest/evidence.ts` รับ+เซฟไฟล์ที่
+            `~/meter-evidence/<device>/<point>/<frame_id>.jpg` + กันภาพใหญ่เกิน (2MB
+            default) เสร็จแล้ว ทดสอบจริงด้วย mosquitto_pub บนเครื่อง dev ผ่าน —
+            `ingest.invalid` นิ่ง 0 ตลอด ตรง done-when
+            🔴 เพื่อนทีม AI ยังส่งภาพจริงไม่ได้ เพราะโค้ดฝั่งเขามีเงื่อนไข "ส่งเฉพาะ
+            quality != OK" แต่โมเดลส่ง quality:"OK" ตายตัวทุกครั้งไม่ว่า confidence
+            จะต่ำแค่ไหน (เจอ confidence 0.013 แต่ quality ยัง OK) — แจ้งให้แก้แล้ว
+            **ที่เหลือยังไม่ทำ:** แสดงผลบนการ์ด/แผงรายละเอียด · retention แยกสำหรับภาพ ·
+            `message_size_limit` ใน mosquitto.conf · ยังไม่ deploy ขึ้น Pi
 
 ## T-010 [P2] pg_dump cron ออกนอกเครื่อง — doing
 why:        D-006 ยอมให้ Postgres อยู่บน SD โดยแลกกับต้องมี backup นอกเครื่อง

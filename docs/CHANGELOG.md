@@ -6,6 +6,28 @@
 
 ---
 
+## รับภาพ evidence จาก MQTT + เซฟลงดิสก์ (T-011, doing)  🟡
+- topic จริงจากทีม AI ต่างจากที่เดาไว้ตอน D-013: `meter/<device>/evidence/<frame_id>/
+  <point_id>/<kind>` (6 ระดับ) ไม่ใช่ `snapshot/<frame_id>` (4 ระดับ) — พิสูจน์ด้วย
+  `mosquitto_pub` มือ ๆ ก่อนเชื่อ ; อัปเดต `src/contract/topics.ts` ตามของจริง
+  พร้อม `parseEvidenceTopic()`
+- `src/server/ingest/evidence.ts` (ใหม่) — `handleEvidence()` เซฟไฟล์ที่
+  `~/meter-evidence/<device>/<point>/<frame_id>.jpg` (path ตั้งค่าได้ผ่าน `EVIDENCE_DIR`)
+  · กันภาพใหญ่เกิน 2MB (default, ปรับได้) เป็นเกราะชั้นแรกระหว่างรอตั้ง
+  `message_size_limit` ที่ตัว broker · `ensureEvidenceDir()` เช็คเขียนไฟล์ได้จริงตอนบูต
+- `src/server/ingest/index.ts` — subscribe แยกจาก `meterTopics.all()` เสมอ (คนละจำนวน
+  ระดับ) เช็ค `parseEvidenceTopic()` **ก่อน** โค้ด JSON parsing เดิมเพื่อกัน payload
+  ไบต์ภาพหลุดไปโดน `JSON.parse()` และกันสถิติภาพปนกับ `stats.received`/`invalid`
+  ที่ใช้เฝ้าดูสัญญากับทีม AI (เก็บสถิติแยกใน evidence.ts เอง)
+- verify: `bun run type-check` ผ่านสะอาด ; ทดสอบจริงด้วย `mosquitto_pub` ยิงเข้า
+  broker dev — ไฟล์ไปโผล่ path/เนื้อหาถูกต้อง ; `ingest.invalid` นิ่ง 0 ตลอดการทดสอบ
+- 🔴 เพื่อนทีม AI ยังส่งภาพจริงไม่ได้ — โค้ดฝั่งเขามีเงื่อนไข "ส่งเฉพาะ quality != OK"
+  แต่โมเดลส่ง `quality:"OK"` ตายตัวทุกครั้งไม่ว่า confidence จะต่ำแค่ไหน แจ้งให้แก้แล้ว
+- ยังไม่ทำ: แสดงผลบนการ์ด/แผงรายละเอียด, retention แยกสำหรับภาพ,
+  `message_size_limit` ใน mosquitto.conf, ยังไม่ deploy ขึ้น Pi
+
+---
+
 ## เพิ่ม topic MQTT สำหรับ snapshot เข้า source of truth (T-011)  🟢
 - `meterTopics.snapshot(deviceId, frameId)` + `snapshotAll()` ใน `src/contract/topics.ts`
   ตาม pattern ที่เคาะไว้แล้วตั้งแต่ D-013 (`meter/<device_id>/snapshot/<frame_id>`, 4 ระดับ,

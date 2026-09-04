@@ -14,6 +14,7 @@ import {
   inboundMessageSchema,
   meterTopics,
   parseTopic,
+  parseEvidenceTopic,
   type MeterFrameMessage,
   type DeviceHeartbeatMessage,
   type DeviceStatusMessage,
@@ -21,6 +22,7 @@ import {
 import { liveEvents, type LiveReading } from "../events";
 import { shouldStore, markStored, throttleConfig } from "./throttle";
 import { cleanRawText } from "./normalize";
+import { handleEvidence, ensureEvidenceDir } from "./evidence";
 
 const BROKER_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
 
@@ -206,6 +208,12 @@ async function handleStatus(msg: DeviceStatusMessage) {
 }
 
 export function startIngest() {
+  // ทำแยกจาก client.connect ตั้งใจ — ถ้าโฟลเดอร์เก็บภาพเขียนไม่ได้ (เช่น mount ผิด)
+  // อยากรู้ตั้งแต่ log แรกตอนบูต ไม่ใช่รอไปเจอตอนภาพแรกเข้ามาแล้วเงียบ ๆ ทิ้งไป
+  void ensureEvidenceDir().catch((e) =>
+    console.error("[evidence] เตรียมโฟลเดอร์เก็บภาพไม่สำเร็จ:", e instanceof Error ? e.message : e),
+  );
+
   const client = mqtt.connect(BROKER_URL, {
     clientId: CLIENT_ID,
     // เก็บ session ไว้ฝั่ง broker — ข้อความ QoS 1 ที่ค้างตอนเรา restart จะถูกส่งซ้ำให้ครบ
@@ -221,6 +229,17 @@ export function startIngest() {
       }
       console.log(`[ingest] ฟัง ${meterTopics.all()} ที่ ${BROKER_URL}`);
     });
+
+    // แยก subscription ต่างหากจากด้านบนเสมอ (คนละจำนวนระดับ — 6 vs 3) ห้ามรวมเป็น
+    // `meter/#` เด็ดขาด ไม่งั้นภาพจะไหลเข้า parseTopic() (คาด 3 ระดับ) แล้วถูกนับเป็น
+    // invalid ปนกับสถิติที่ใช้เฝ้าดูสุขภาพสัญญากับทีม AI
+    client.subscribe(meterTopics.evidenceAll(), { qos: 1 }, (err) => {
+      if (err) {
+        console.error("[evidence] subscribe ล้มเหลว:", err.message);
+        return;
+      }
+      console.log(`[evidence] ฟัง ${meterTopics.evidenceAll()} ที่ ${BROKER_URL}`);
+    });
   });
 
   client.on("error", (err) => console.error("[ingest] mqtt error:", err.message));
@@ -229,6 +248,16 @@ export function startIngest() {
   client.on("message", (topic, payload) => {
     // payload ว่าง = คนส่งกำลังล้าง retained ไม่ใช่ข้อความจริง
     if (payload.length === 0) return;
+
+    // ⚠️ ต้องเช็คก่อนเสมอ — payload ของภาพเป็นไบต์ดิบ ถ้าหลุดไปโดน JSON.parse()
+    // ด้านล่างจะพังทันที (และถ้าปล่อยให้นับ stats.received/invalid ร่วมกับข้อความปกติ
+    // จะทำให้ตัวเลขที่ใช้เฝ้าดูสุขภาพสัญญากับทีม AI เพี้ยนไปด้วย — สถิติภาพแยกเก็บใน evidence.ts)
+    const evidenceTopic = parseEvidenceTopic(topic);
+    if (evidenceTopic) {
+      void handleEvidence(evidenceTopic, payload);
+      return;
+    }
+
     stats.received += 1;
 
     void (async () => {
