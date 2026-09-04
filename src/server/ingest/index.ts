@@ -20,6 +20,7 @@ import {
 } from "../../contract";
 import { liveEvents, type LiveReading } from "../events";
 import { shouldStore, markStored, throttleConfig } from "./throttle";
+import { cleanRawText } from "./normalize";
 
 const BROKER_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
 
@@ -79,6 +80,13 @@ async function ensurePoints(frame: MeterFrameMessage) {
 }
 
 async function handleFrame(frame: MeterFrameMessage) {
+  // ทำความสะอาด value_text ดิบก่อนทำอะไรทั้งหมด (ดูเหตุผลใน normalize.ts) — ต้องทำ
+  // ก่อน throttle/insert/ส่งขึ้นจอสด เพื่อให้ทุกที่เห็นค่าเดียวกันที่ format นิ่งแล้ว
+  frame = {
+    ...frame,
+    readings: frame.readings.map((r) => (r.value_text !== null ? { ...r, value_text: cleanRawText(r.value_text) } : r)),
+  };
+
   await ensureDevice(frame.device_id);
   await ensurePoints(frame);
 
