@@ -191,7 +191,9 @@ body {
 /* ---------- แถบเครื่อง ---------- */
 .devicebar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  /* 260px เดิมพอสำหรับ dev-name 15px แต่พอโต 18px (ขอความอ่านง่าย) ชื่อยาว ๆ
+     ("ตู้ควบคุมหม้อไอน้ำ") ตัดขึ้นบรรทัดใหม่กลางคำ ขยายเป็น 300px ให้พอ */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 14px;
   margin-bottom: 30px;
 }
@@ -211,12 +213,12 @@ body {
 .dev-ok .dev-dot { background: var(--ok); }
 .dev-quiet .dev-dot { background: var(--uncertain); }
 .dev-offline .dev-dot { background: var(--bad); }
-.dev-name { font-weight: 600; font-size: 15px; }
+.dev-name { font-weight: 600; font-size: 18px; }
 .dev-id { color: var(--dim); font-size: 12px; margin-left: auto; font-family: var(--mono); }
 .dev-meta {
   margin-top: 7px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 18px;
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
@@ -252,7 +254,7 @@ body {
    (ถ้า padding อยู่ที่ .card banner จะเว้นขอบซ้ายขวาไม่เต็มใบ) */
 .card-inner { padding: 16px 18px 12px; display: flex; flex-direction: column; gap: 12px; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.card-head h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.card-head h2 { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.35; }
 .card-id { color: var(--dim); font-size: 11px; font-family: var(--mono); text-align: right; }
 
 .card-body { display: flex; align-items: center; gap: 16px; min-height: 92px; }
@@ -265,7 +267,7 @@ body {
   line-height: 1;
   letter-spacing: -0.01em;
 }
-.v-unit { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+.v-unit { font-family: var(--mono); font-size: 18px; color: var(--muted); }
 .v-text {
   font-family: var(--mono);
   font-size: 32px;
@@ -278,7 +280,7 @@ body {
   font-weight: 700;
   color: var(--uncertain);
 }
-.v-none { font-size: 17px; color: var(--dim); }
+.v-none { font-size: 18px; color: var(--dim); }
 
 /* ค่าเก่า/ออฟไลน์/ยังไม่เคยได้ค่า — เดิมพึ่ง opacity อย่างเดียว ซึ่งบนพื้นขาวใช้ไม่ได้
    (การ์ดยังขาวอยู่ แค่ตัวหนังสือจาง ตาอ่านว่า "ปกติแต่เบลอ" ไม่ใช่ "เชื่อไม่ได้")
@@ -299,8 +301,8 @@ body {
    แทนที่ badge เดิมของสถานะเดียวกัน (ไม่ใส่ซ้ำสองที่ ข้อความเดิมย้ายมาที่นี่)
    ยกเว้น "never" ที่ไม่มี banner — ขอบประบางพอสื่อแล้วว่า "ยังไม่เคยมีข้อมูล" ไม่ใช่ "ผิดปกติ" */
 .banner {
-  padding: 5px 18px;
-  font-size: 12px;
+  padding: 6px 18px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.03em;
   color: var(--on-banner);
@@ -314,7 +316,7 @@ body {
 /* แถบ confidence — ตัวเลขเล็กมาก่อนหน้านี้ (0.95) แทบไม่มีใครอ่าน
    แถบยาว-สั้นมีสีอ่านจากไกลได้ ตรงกับหลัก "สถานะผิดปกติต้องสะดุดตา" ที่ยึดทั้งไฟล์ */
 .conf { margin-top: 2px; }
-.conf-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.conf-row { display: flex; justify-content: space-between; font-size: 18px; color: var(--muted); margin-bottom: 4px; }
 .conf-track { height: 6px; border-radius: var(--r-pill); background: var(--panel-hi); overflow: hidden; }
 .conf-fill { display: block; height: 100%; border-radius: var(--r-pill); }
 
@@ -326,7 +328,7 @@ body {
 .spark-stop-top { stop-color: var(--ok-dim); stop-opacity: 0.28; }
 .spark-stop-bottom { stop-color: var(--ok-dim); stop-opacity: 0; }
 .spark-gap { stroke: var(--uncertain); stroke-width: 1; opacity: 0.5; }
-.spark-empty { height: 48px; display: flex; align-items: center; color: var(--dim); font-size: 12px; }
+.spark-empty { height: 48px; display: flex; align-items: center; color: var(--dim); font-size: 18px; }
 
 .card-uncertain .spark-line { stroke: var(--uncertain); }
 .card-uncertain .spark-stop-top { stop-color: var(--uncertain); }
@@ -345,15 +347,18 @@ body {
   gap: 10px;
   border-top: 1px solid var(--line-soft);
   padding-top: 10px;
+  /* badge/age เพิ่งใหญ่ขึ้นเป็น 18px (ขอความอ่านง่าย) — เผื่อพื้นที่ไม่พอในการ์ดแคบ
+     ให้ตกบรรทัดแทนล้นออกนอกกรอบ ดีกว่าตัดข้อความหาย */
+  flex-wrap: wrap;
 }
 .badges { display: flex; gap: 6px; flex-wrap: wrap; }
-.badge { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: var(--r-pill); }
+.badge { font-size: 18px; font-weight: 700; padding: 3px 10px; border-radius: var(--r-pill); }
 .b-offline { background: color-mix(in srgb, var(--bad) 10%, transparent); color: var(--bad); }
 .b-stale { background: var(--panel-hi); color: var(--muted); }
 .b-uncertain { background: color-mix(in srgb, var(--uncertain) 10%, transparent); color: var(--uncertain); }
 .b-over { background: color-mix(in srgb, var(--over) 10%, transparent); color: var(--over); }
 .b-new { background: color-mix(in srgb, var(--info) 10%, transparent); color: var(--info); }
-.card-age { color: var(--dim); font-size: 11px; margin-left: auto; white-space: nowrap; font-family: var(--mono); }
+.card-age { color: var(--dim); font-size: 18px; margin-left: auto; white-space: nowrap; font-family: var(--mono); }
 .card-range { opacity: 0.8; }
 
 /* ---------- เกจ ---------- */
@@ -420,10 +425,10 @@ body {
 
 .d-now { display: flex; align-items: center; gap: 16px; margin: 16px 0 4px; }
 .d-big { font-family: var(--mono); font-size: 40px; font-weight: 600; line-height: 1; }
-.d-sub { font-size: 11px; color: var(--dim); margin-top: 7px; }
+.d-sub { font-size: 18px; color: var(--dim); margin-top: 7px; }
 
 .d-chips { display: flex; gap: 6px; margin: 16px 0 10px; }
-.chip { font-size: 11px; padding: 5px 12px; border-radius: var(--r-pill); border: 1px solid var(--line); color: var(--muted); background: none; cursor: pointer; font-family: inherit; }
+.chip { font-size: 18px; padding: 5px 14px; border-radius: var(--r-pill); border: 1px solid var(--line); color: var(--muted); background: none; cursor: pointer; font-family: inherit; }
 .chip:hover { color: var(--text); }
 .chip-on { background: color-mix(in srgb, var(--ok) 10%, transparent); border-color: var(--ok); color: var(--ok); }
 
@@ -436,23 +441,23 @@ body {
 .hc-band-bottom { stop-color: var(--ok-dim); stop-opacity: 0; }
 /* แถบช่วงที่อ่านไม่ออก — ความเข้มบอกสัดส่วน ตั้งเป็น inline style ใน component */
 .hc-unreadable { fill: var(--uncertain); }
-.hc-empty { height: 150px; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 12px; }
+.hc-empty { height: 150px; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 18px; }
 
-.d-lab { font-size: 11px; color: var(--muted); margin: 14px 0 6px; }
+.d-lab { font-size: 18px; color: var(--muted); margin: 14px 0 6px; }
 .qbar { display: flex; height: 10px; border-radius: var(--r-pill); overflow: hidden; background: var(--panel-hi); }
 .qbar i { display: block; }
 .q-ok { background: var(--ok); }
 .q-unc { background: var(--uncertain); }
 .q-bad { background: var(--bad); }
-.qleg { display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin-top: 7px; flex-wrap: wrap; }
+.qleg { display: flex; gap: 16px; font-size: 18px; color: var(--muted); margin-top: 7px; flex-wrap: wrap; }
 .qleg .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
 
 .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
 .d-box { border: 1px solid var(--line-soft); border-radius: 10px; padding: 9px 12px; }
-.d-box .t { font-size: 11px; color: var(--muted); }
-.d-box .v { font-family: var(--mono); font-size: 15px; margin-top: 3px; }
+.d-box .t { font-size: 18px; color: var(--muted); }
+.d-box .v { font-family: var(--mono); font-size: 18px; margin-top: 3px; }
 .d-box .v-sm { font-size: 11px; word-break: break-all; }
 
-.d-snap { border: 1px dashed var(--line); border-radius: 10px; padding: 16px; text-align: center; color: var(--dim); font-size: 11px; margin-top: 14px; }
+.d-snap { border: 1px dashed var(--line); border-radius: 10px; padding: 16px; text-align: center; color: var(--dim); font-size: 18px; margin-top: 14px; }
 .d-evidence { display: block; width: 100%; max-height: 360px; object-fit: contain; border: 1px solid var(--line); border-radius: 10px; margin-top: 14px; background: var(--panel-hi); }
-.d-err { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--bad) 6%, transparent); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); color: var(--bad); font-size: 12px; }
+.d-err { margin: 10px 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--bad) 6%, transparent); border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent); color: var(--bad); font-size: 18px; }
