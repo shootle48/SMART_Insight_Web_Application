@@ -9,6 +9,7 @@
 //   อ่านไม่ออก   — **ไม่แสดงตัวเลขใด ๆ** เพราะ 0 คือค่าที่อ่านได้จริงในเกือบทุกสเกล
 //   ค่าเก่า/ตาย  — หรี่ทั้งใบ + บอกอายุ ไม่ให้เข้าใจผิดว่ากำลังดูค่าปัจจุบัน
 
+import { useEffect, useState } from "react";
 import type { PointRow } from "../apiClient";
 import type { SparkPoint } from "../useLiveData";
 import { Gauge } from "./Gauge";
@@ -18,6 +19,13 @@ import { ageLabel, formatValue, isStale } from "../time";
 type Props = { point: PointRow; spark: SparkPoint[]; now: number; onOpen?: () => void; selected?: boolean };
 
 export function PointCard({ point, spark, now, onOpen, selected }: Props) {
+  // ลองภาพจากกล้องก่อนเสมอ (แทนที่ gauge SVG) — ถ้าจุดนี้ไม่เคยมีภาพ (404) ค่อย fallback
+  // กลับไปที่ gauge เดิม เล็กแค่ไหนก็ยังบอกได้ว่า "มีภาพ" ส่วนดูดีเทลจริงไปกดเปิดแผงรายละเอียด
+  // ต้อง reset ทุกครั้งที่การ์ดใบนี้เปลี่ยนไปโชว์จุดอื่น (React คีย์ตาม point_id ผ่าน key
+  // ที่ App.tsx เรียกใช้อยู่แล้ว แต่กันพลาดไว้อีกชั้นเผื่อวันหนึ่งมีคนเอา key ออก)
+  const [hasEvidence, setHasEvidence] = useState(true);
+  useEffect(() => setHasEvidence(true), [point.point_id]);
+
   const offline = point.device_status !== "ONLINE";
   const stale = isStale(point.captured_at, now);
   const unreadable = point.quality === "UNREADABLE";
@@ -94,14 +102,23 @@ export function PointCard({ point, spark, now, onOpen, selected }: Props) {
         </header>
 
         <div className="card-body">
-          {showGauge && (
-            <Gauge
-              value={unreadable ? null : point.value_num}
-              min={point.min_value!}
-              max={point.max_value!}
-              unreadable={unreadable || never}
-              uncertain={uncertain}
+          {hasEvidence ? (
+            <img
+              className="card-thumb"
+              src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest`}
+              alt=""
+              onError={() => setHasEvidence(false)}
             />
+          ) : (
+            showGauge && (
+              <Gauge
+                value={unreadable ? null : point.value_num}
+                min={point.min_value!}
+                max={point.max_value!}
+                unreadable={unreadable || never}
+                uncertain={uncertain}
+              />
+            )
           )}
 
           <div className="card-value">

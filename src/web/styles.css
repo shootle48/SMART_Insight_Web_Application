@@ -358,6 +358,9 @@ body {
 
 /* ---------- เกจ ---------- */
 .gauge { flex: none; }
+/* ภาพย่อจากกล้อง แทนที่ gauge SVG ในการ์ดเมื่อจุดนั้นมีภาพ — เล็กแค่พอบอกว่า "มีภาพ"
+   ขนาดเท่า gauge เดิม (92px) การ์ดจะได้ไม่ขยับ ; ดูดีเทลจริงต้องกดเปิดแผงรายละเอียด */
+.card-thumb { flex: none; width: 92px; height: 92px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-hi); }
 .gauge-track { fill: none; stroke: var(--track); stroke-width: 8; }
 .gauge-fill {
   fill: none;
