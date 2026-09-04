@@ -11,14 +11,11 @@
 
 import { useEffect, useState } from "react";
 import type { PointRow } from "../apiClient";
-import type { SparkPoint } from "../useLiveData";
-import { Gauge } from "./Gauge";
-import { Sparkline } from "./Sparkline";
 import { ageLabel, formatValue, isStale } from "../time";
 
-type Props = { point: PointRow; spark: SparkPoint[]; now: number; onOpen?: () => void; selected?: boolean };
+type Props = { point: PointRow; now: number; onOpen?: () => void; selected?: boolean };
 
-export function PointCard({ point, spark, now, onOpen, selected }: Props) {
+export function PointCard({ point, now, onOpen, selected }: Props) {
   // ลองภาพจากกล้องก่อนเสมอ (แทนที่ gauge SVG) — ถ้าจุดนี้ไม่เคยมีภาพ (404) ค่อย fallback
   // กลับไปที่ gauge เดิม เล็กแค่ไหนก็ยังบอกได้ว่า "มีภาพ" ส่วนดูดีเทลจริงไปกดเปิดแผงรายละเอียด
   // ต้อง reset ทุกครั้งที่การ์ดใบนี้เปลี่ยนไปโชว์จุดอื่น (React คีย์ตาม point_id ผ่าน key
@@ -36,7 +33,6 @@ export function PointCard({ point, spark, now, onOpen, selected }: Props) {
   // ไม่ว่าจะเป็นชนิดไหน (เดิมเคยเช็ค kind !== "LAMP" เพิ่ม แต่ WATER_METER ก็ไม่มีสเกลเหมือนกัน
   // ผูกกับ kind เฉพาะเจาะจงแบบนั้นจะต้องคอยตามแก้ทุกครั้งที่มีชนิดใหม่)
   const hasScale = point.min_value !== null && point.max_value !== null;
-  const showGauge = hasScale;
   const over =
     point.value_num !== null && hasScale && (point.value_num < point.min_value! || point.value_num > point.max_value!);
 
@@ -102,7 +98,7 @@ export function PointCard({ point, spark, now, onOpen, selected }: Props) {
         </header>
 
         <div className="card-body">
-          {hasEvidence ? (
+          {hasEvidence && (
             <img
               className="card-thumb"
               // ผูก query string เข้ากับ frame_id — URL เดิมทุกครั้งเบราว์เซอร์จะไม่ยิงคำขอใหม่ให้เอง
@@ -112,16 +108,6 @@ export function PointCard({ point, spark, now, onOpen, selected }: Props) {
               alt=""
               onError={() => setHasEvidence(false)}
             />
-          ) : (
-            showGauge && (
-              <Gauge
-                value={unreadable ? null : point.value_num}
-                min={point.min_value!}
-                max={point.max_value!}
-                unreadable={unreadable || never}
-                uncertain={uncertain}
-              />
-            )
           )}
 
           <div className="card-value">
@@ -140,10 +126,6 @@ export function PointCard({ point, spark, now, onOpen, selected }: Props) {
               <span className="v-text">{point.value_text}</span>
             )}
           </div>
-        </div>
-
-        <div className="card-spark">
-          <Sparkline data={spark} />
         </div>
 
         {confPct !== null && (

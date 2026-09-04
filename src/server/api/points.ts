@@ -1,8 +1,10 @@
-// ค่าล่าสุดทุกจุด + ประวัติย้อนหลังของจุดเดียว
+// ค่าล่าสุดทุกจุด + ประวัติย้อนหลังของจุดเดียว + ตั้งค่าจุด (label/หน่วย/สเกล)
 
 import { Hono } from "hono";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "../../db/index";
+import { points } from "../../db/schema";
 
 export const pointsApi = new Hono();
 
@@ -71,6 +73,50 @@ pointsApi.get("/history", async (c) => {
   `);
 
   return c.json({ range: rangeRaw, bucket_seconds: bucketSec, rows });
+});
+
+const pointConfigInput = z
+  .object({
+    label: z.string().trim().min(1, "ต้องใส่ชื่อจุดวัด"),
+    unit: z.string().trim().min(1).nullable(),
+    min_value: z.number().finite().nullable(),
+    max_value: z.number().finite().nullable(),
+  })
+  // min/max ต้องมาคู่กันเสมอ — สเกลครึ่งเดียว (มี min ไม่มี max) วาดเกจไม่ได้และ
+  // เช็ค "เกินสเกล" ก็ทำไม่ได้เช่นกัน (ดู over ใน PointCard.tsx)
+  .refine((v) => (v.min_value === null) === (v.max_value === null), {
+    message: "ต้องใส่ค่าต่ำสุด/สูงสุดคู่กัน หรือเว้นว่างทั้งคู่ (จุดที่ไม่มีสเกล)",
+    path: ["max_value"],
+  })
+  .refine((v) => v.min_value === null || v.max_value === null || v.max_value > v.min_value, {
+    message: "ค่าสูงสุดต้องมากกว่าค่าต่ำสุด",
+    path: ["max_value"],
+  });
+
+/**
+ * ตั้งค่าจุดวัด (label/หน่วย/สเกล) — ใช้ทั้งจุดที่ ingest สร้างอัตโนมัติ (enabled=false,
+ * รอคนยืนยัน) และจุดที่เคยตั้งไว้แล้วแต่อยากแก้ค่า
+ *
+ * บันทึกสำเร็จ = คนยืนยันจุดนี้แล้ว จึงตั้ง enabled=true ให้เสมอ ไม่มีช่องแยกปิดเปิด
+ * ในฟอร์มนี้ — "ยังไม่ตั้งค่า" กับ "ตั้งค่าแล้วแต่ปิดใช้งาน" เป็นคนละเรื่องกัน ยังไม่มี UI
+ * สำหรับเรื่องหลังในตอนนี้
+ */
+pointsApi.patch("/:pointId", async (c) => {
+  const pointId = c.req.param("pointId");
+  const body = await c.req.json().catch(() => null);
+  const parsed = pointConfigInput.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" }, 400);
+  }
+
+  const [updated] = await db
+    .update(points)
+    .set({ ...parsed.data, enabled: true })
+    .where(eq(points.point_id, pointId))
+    .returning();
+
+  if (!updated) return c.json({ error: `ไม่พบจุดวัด ${pointId}` }, 404);
+  return c.json({ point: updated });
 });
 
 /** แปลง "15m" / "6h" / "7d" เป็นวินาที ; คืน null ถ้ารูปแบบผิด */

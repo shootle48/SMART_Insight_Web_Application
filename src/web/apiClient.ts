@@ -105,3 +105,24 @@ export const fetchHistory = (pointId: string, range = "15m") =>
  */
 export const fetchAllHistory = (range = "15m") =>
   getJson<{ rows: BatchHistoryRow[] }>(`/api/points/history?range=${range}`).then((r) => r.rows);
+
+export type PointConfigInput = {
+  label: string;
+  unit: string | null;
+  min_value: number | null;
+  max_value: number | null;
+};
+
+/** บันทึก label/หน่วย/สเกล — สำเร็จแล้ว server จะตั้ง enabled=true ให้เอง (ดู server/api/points.ts) */
+export async function updatePointConfig(pointId: string, config: PointConfigInput): Promise<PointRow> {
+  const res = await fetch(`/api/points/${encodeURIComponent(pointId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error((body as { error?: string } | null)?.error ?? `HTTP ${res.status}`);
+  }
+  return ((await res.json()) as { point: PointRow }).point;
+}

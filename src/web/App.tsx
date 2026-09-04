@@ -18,7 +18,7 @@ function initialTheme(): "light" | "dark" {
 }
 
 export function App() {
-  const { points, devices, spark, conn, error, reload } = useLiveData();
+  const { points, devices, conn, error, reload, patchPoint } = useLiveData();
 
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
   useEffect(() => {
@@ -113,7 +113,6 @@ export function App() {
                 <PointCard
                   key={p.point_id}
                   point={p}
-                  spark={spark[p.point_id] ?? []}
                   now={now}
                   selected={p.point_id === selectedId}
                   onOpen={() => setSelectedId(p.point_id)}
@@ -126,7 +125,12 @@ export function App() {
       </div>
 
       {selected && (
-        <PointDetail point={selected} now={now} onClose={() => setSelectedId(null)} />
+        <PointDetail
+          point={selected}
+          now={now}
+          onClose={() => setSelectedId(null)}
+          onConfigSaved={(patch) => patchPoint(selected.point_id, patch)}
+        />
       )}
     </>
   );

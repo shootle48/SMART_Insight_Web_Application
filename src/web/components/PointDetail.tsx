@@ -9,9 +9,8 @@
 // จอที่ควรบอกภาพรวมจะกลายเป็นจอที่บอกเรื่องเดียว
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchHistory, type HistoryBucket, type PointRow } from "../apiClient";
+import { fetchHistory, updatePointConfig, type HistoryBucket, type PointRow } from "../apiClient";
 import { HistoryChart } from "./HistoryChart";
-import { Gauge } from "./Gauge";
 import { ageLabel, formatValue, isStale } from "../time";
 
 /** ไม่มีใครแตะนานเท่านี้ → กลับหน้ารวมเอง */
@@ -24,9 +23,25 @@ const RANGES = [
   { key: "24h", label: "24 ชม." },
 ] as const;
 
-type Props = { point: PointRow; now: number; onClose: () => void };
+/** ค่าตั้งต้นของฟอร์ม — min/max เป็น string เพื่อให้เว้นว่างได้ระหว่างพิมพ์ (จุดไม่มีสเกล) */
+function toConfigForm(point: PointRow) {
+  return {
+    label: point.label ?? "",
+    unit: point.unit ?? "",
+    min: point.min_value !== null ? String(point.min_value) : "",
+    max: point.max_value !== null ? String(point.max_value) : "",
+  };
+}
 
-export function PointDetail({ point, now, onClose }: Props) {
+type Props = {
+  point: PointRow;
+  now: number;
+  onClose: () => void;
+  /** เรียกหลังบันทึกค่าตั้งค่าสำเร็จ — ให้ App.tsx อัปเดต state ในเครื่องทันที ไม่ต้องรอ SSE */
+  onConfigSaved: (patch: Partial<PointRow>) => void;
+};
+
+export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
   const [range, setRange] = useState<string>("1h");
   const [buckets, setBuckets] = useState<HistoryBucket[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +52,60 @@ export function PointDetail({ point, now, onClose }: Props) {
   // ไม่ได้ unmount ตอนกดการ์ดอื่นขณะแผงเปิดอยู่ (state เดิมจะค้างข้ามจุด)
   const [hasEvidence, setHasEvidence] = useState(true);
   useEffect(() => setHasEvidence(true), [point.point_id]);
+
+  // ฟอร์มตั้งค่าจุด (label/หน่วย/สเกล) — ปิดไว้เป็นค่าเริ่มต้น เปิดเมื่อกดปุ่ม ⚙ ตั้งค่า
+  // เหตุผลเดียวกับ hasEvidence ข้างบน: ต้อง reset ทุกครั้งที่สลับจุด เพราะ component ไม่
+  // unmount ระหว่างกดการ์ดอื่นขณะแผงเปิดค้างอยู่ ไม่งั้นฟอร์มค้างเปิดแก้จุดผิดข้ามกัน
+  const [editingConfig, setEditingConfig] = useState(false);
+  const [configForm, setConfigForm] = useState(() => toConfigForm(point));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  useEffect(() => {
+    setEditingConfig(false);
+    setConfigForm(toConfigForm(point));
+    setSaveError(null);
+  }, [point.point_id]);
+
+  const submitConfig = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const label = configForm.label.trim();
+      if (!label) {
+        setSaveError("ต้องใส่ชื่อจุดวัด");
+        return;
+      }
+      const unit = configForm.unit.trim() === "" ? null : configForm.unit.trim();
+      const minRaw = configForm.min.trim();
+      const maxRaw = configForm.max.trim();
+      if ((minRaw === "") !== (maxRaw === "")) {
+        setSaveError("ต้องใส่ค่าต่ำสุด/สูงสุดคู่กัน หรือเว้นว่างทั้งคู่ (จุดที่ไม่มีสเกล)");
+        return;
+      }
+      const min_value = minRaw === "" ? null : Number(minRaw);
+      const max_value = maxRaw === "" ? null : Number(maxRaw);
+      if ((min_value !== null && Number.isNaN(min_value)) || (max_value !== null && Number.isNaN(max_value))) {
+        setSaveError("ค่าต่ำสุด/สูงสุดต้องเป็นตัวเลข");
+        return;
+      }
+      if (min_value !== null && max_value !== null && max_value <= min_value) {
+        setSaveError("ค่าสูงสุดต้องมากกว่าค่าต่ำสุด");
+        return;
+      }
+
+      setSaving(true);
+      setSaveError(null);
+      try {
+        const updated = await updatePointConfig(point.point_id, { label, unit, min_value, max_value });
+        onConfigSaved(updated);
+        setEditingConfig(false);
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [configForm, point.point_id, onConfigSaved],
+  );
 
   const lastTouch = useRef(Date.now());
   const touch = useCallback(() => {
@@ -109,9 +178,17 @@ export function PointDetail({ point, now, onClose }: Props) {
           <h2>{point.label ?? point.point_id}</h2>
           <div className="d-id">
             {point.point_id} · {point.device_id}
+            {point.enabled === false && <span className="d-unconfigured"> · ยังไม่ตั้งค่า</span>}
           </div>
         </div>
         <div className="d-actions">
+          <button
+            className="d-cfg-btn"
+            onClick={() => setEditingConfig((v) => !v)}
+            aria-expanded={editingConfig}
+          >
+            ⚙ ตั้งค่า
+          </button>
           <span className="d-auto" title="จอผนังไม่มีใครเดินไปกดปิด จึงกลับหน้ารวมเอง">
             ↩ กลับหน้ารวมใน {remaining} วิ
           </span>
@@ -121,17 +198,62 @@ export function PointDetail({ point, now, onClose }: Props) {
         </div>
       </header>
 
+      {editingConfig && (
+        <form className="d-cfg" onSubmit={submitConfig}>
+          <label>
+            ชื่อจุดวัด
+            <input
+              type="text"
+              value={configForm.label}
+              onChange={(e) => setConfigForm((f) => ({ ...f, label: e.target.value }))}
+              placeholder="เช่น แรงดันหม้อไอน้ำ"
+              autoFocus
+            />
+          </label>
+          <label>
+            หน่วย
+            <input
+              type="text"
+              value={configForm.unit}
+              onChange={(e) => setConfigForm((f) => ({ ...f, unit: e.target.value }))}
+              placeholder="เช่น bar (เว้นว่างได้ถ้าไม่มีหน่วย)"
+            />
+          </label>
+          <div className="d-cfg-scale">
+            <label>
+              ค่าต่ำสุด
+              <input
+                type="number"
+                step="any"
+                value={configForm.min}
+                onChange={(e) => setConfigForm((f) => ({ ...f, min: e.target.value }))}
+                placeholder="ไม่มีสเกล = เว้นว่าง"
+              />
+            </label>
+            <label>
+              ค่าสูงสุด
+              <input
+                type="number"
+                step="any"
+                value={configForm.max}
+                onChange={(e) => setConfigForm((f) => ({ ...f, max: e.target.value }))}
+                placeholder="ไม่มีสเกล = เว้นว่าง"
+              />
+            </label>
+          </div>
+          {saveError && <div className="d-err">{saveError}</div>}
+          <div className="d-cfg-actions">
+            <button type="submit" className="d-cfg-save" disabled={saving}>
+              {saving ? "กำลังบันทึก..." : "บันทึก"}
+            </button>
+            <button type="button" onClick={() => setEditingConfig(false)} disabled={saving}>
+              ยกเลิก
+            </button>
+          </div>
+        </form>
+      )}
+
       <div className="d-now">
-        {hasScale && (
-          <Gauge
-            value={unreadable ? null : point.value_num}
-            min={point.min_value!}
-            max={point.max_value!}
-            unreadable={unreadable}
-            uncertain={point.quality === "UNCERTAIN"}
-            size={76}
-          />
-        )}
         <div>
           {unreadable ? (
             <span className="v-unreadable">อ่านไม่ออก</span>

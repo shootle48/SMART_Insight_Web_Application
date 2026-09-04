@@ -149,5 +149,11 @@ export function useLiveData() {
     return () => es.close();
   }, [loadAll]);
 
-  return { points, devices, spark, conn, error, reload: loadAll };
+  // อัปเดต state ในเครื่องทันทีหลังบันทึกค่าตั้งค่าจุดสำเร็จ — ไม่ต้องรอ SSE (ซึ่งกระจาย
+  // เฉพาะ reading ใหม่ ไม่กระจาย config ที่เพิ่งแก้) หรือ reload ทั้งหน้าซึ่งช้าและกระพริบ
+  const patchPoint = useCallback((pointId: string, patch: Partial<PointRow>) => {
+    setPoints((prev) => prev.map((p) => (p.point_id === pointId ? { ...p, ...patch } : p)));
+  }, []);
+
+  return { points, devices, spark, conn, error, reload: loadAll, patchPoint };
 }

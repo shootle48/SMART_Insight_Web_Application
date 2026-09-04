@@ -320,25 +320,6 @@ body {
 .conf-track { height: 6px; border-radius: var(--r-pill); background: var(--panel-hi); overflow: hidden; }
 .conf-fill { display: block; height: 100%; border-radius: var(--r-pill); }
 
-/* ---------- sparkline ---------- */
-.card-spark { height: 48px; }
-.spark { display: block; width: 100%; height: 48px; overflow: visible; }
-.spark-line { fill: none; stroke: var(--ok-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.spark-area { stroke: none; }
-.spark-stop-top { stop-color: var(--ok-dim); stop-opacity: 0.28; }
-.spark-stop-bottom { stop-color: var(--ok-dim); stop-opacity: 0; }
-.spark-gap { stroke: var(--uncertain); stroke-width: 1; opacity: 0.5; }
-.spark-empty { height: 48px; display: flex; align-items: center; color: var(--dim); font-size: 18px; }
-
-.card-uncertain .spark-line { stroke: var(--uncertain); }
-.card-uncertain .spark-stop-top { stop-color: var(--uncertain); }
-.card-uncertain .spark-stop-bottom { stop-color: var(--uncertain); }
-.card-over .spark-line { stroke: var(--over); }
-.card-over .spark-stop-top { stop-color: var(--over); }
-.card-over .spark-stop-bottom { stop-color: var(--over); }
-.card-stale .spark-line, .card-offline .spark-line { stroke: var(--dead); }
-.card-stale .spark-area, .card-offline .spark-area { display: none; }
-
 /* ---------- ท้ายการ์ด ---------- */
 .card-foot {
   display: flex;
@@ -361,24 +342,10 @@ body {
 .card-age { color: var(--dim); font-size: 18px; margin-left: auto; white-space: nowrap; font-family: var(--mono); }
 .card-range { opacity: 0.8; }
 
-/* ---------- เกจ ---------- */
-.gauge { flex: none; }
-/* ภาพย่อจากกล้อง แทนที่ gauge SVG ในการ์ดเมื่อจุดนั้นมีภาพ — เล็กแค่พอบอกว่า "มีภาพ"
-   ขนาดเท่า gauge เดิม (92px) การ์ดจะได้ไม่ขยับ ; ดูดีเทลจริงต้องกดเปิดแผงรายละเอียด */
+/* ---------- ภาพย่อจากกล้อง ---------- */
+/* มีภาพจริงจากกล้องแล้ว (evidence) เลยเลิกใช้ gauge SVG จำลองทั้งหมด — ทั้งการ์ดหน้ารวม
+   และแผงรายละเอียด ; ขนาด 92px เท่า gauge เดิม การ์ดจะได้ไม่ขยับ */
 .card-thumb { flex: none; width: 92px; height: 92px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-hi); }
-.gauge-track { fill: none; stroke: var(--track); stroke-width: 8; }
-.gauge-fill {
-  fill: none;
-  stroke: var(--ok);
-  stroke-width: 8;
-  stroke-linecap: round;
-  /* dashoffset เป็นตัวเลขล้วน จึง transition ได้จริงทุกเบราว์เซอร์
-     ต่างจาก attribute `d` ของ path ที่ส่วนใหญ่ animate ไม่ได้ */
-  transition: stroke-dashoffset 0.8s ease-out;
-}
-.gauge-uncertain .gauge-fill { stroke: var(--uncertain); }
-.gauge-over .gauge-fill { stroke: var(--over); }
-.card-stale .gauge-fill, .card-offline .gauge-fill { stroke: var(--dead); }
 
 /* จอ kiosk แนวนอนใหญ่ — ขยายตัวเลขให้อ่านจากไกลขึ้น */
 @media (min-width: 1600px) {
@@ -422,6 +389,38 @@ body {
 .d-auto { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 4px 10px; white-space: nowrap; }
 .d-close { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 8px; width: 30px; height: 30px; cursor: pointer; font-size: 14px; }
 .d-close:hover { color: var(--text); border-color: var(--text); }
+.d-unconfigured { color: var(--info); }
+
+.d-cfg-btn { font-size: 18px; padding: 4px 12px; border-radius: var(--r-pill); border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.d-cfg-btn:hover, .d-cfg-btn[aria-expanded="true"] { color: var(--text); border-color: var(--text); }
+
+/* ฟอร์มตั้งค่าจุด — เปิด/ปิดด้วยปุ่ม ⚙ ในหัวแผง */
+.d-cfg { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-hi); }
+.d-cfg label { display: flex; flex-direction: column; gap: 4px; font-size: 18px; color: var(--muted); }
+.d-cfg input {
+  font: inherit;
+  font-size: 18px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+}
+.d-cfg input:focus { outline: 2px solid var(--info); outline-offset: -1px; }
+.d-cfg-scale { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.d-cfg-actions { display: flex; gap: 10px; margin-top: 2px; }
+.d-cfg-save { background: var(--ok); color: #fff; border: none; }
+.d-cfg-actions button {
+  font-size: 18px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+.d-cfg-actions button:disabled { opacity: 0.6; cursor: default; }
 
 .d-now { display: flex; align-items: center; gap: 16px; margin: 16px 0 4px; }
 .d-big { font-family: var(--mono); font-size: 40px; font-weight: 600; line-height: 1; }
