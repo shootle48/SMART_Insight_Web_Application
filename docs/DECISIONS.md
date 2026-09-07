@@ -3,6 +3,38 @@
 <!-- จดทุกครั้งที่เคาะเรื่องที่ "มีทางเลือกแล้วเลือกทางหนึ่ง" — กันถกซ้ำ/ลืมเหตุผล
      1 เรื่อง = 5-8 บรรทัด พอ. ถ้าการตัดสินใจถูกล้ม → เพิ่มรายการใหม่อ้างของเก่า (ไม่ลบ) -->
 
+## D-017 calibrate จุดวัดจาก UI ผ่าน command ephemeral + config retained  (2026-09-07)
+เลือก:      3 topic pattern ที่ **ไม่มี state ค้างบน edge** —
+            (A) `command/snap-for-calibration` : non-retained, edge รับแล้ว snap-and-forget
+            (B) `evidence/…/CALIBRATION` : reuse pipeline เดิม (T-011) ส่งภาพดิบกลับ
+            (C) `config/<point_id>` : retained, edge sub apply latest-wins เสมอ
+            รายละเอียดเต็ม `docs/CALIBRATION-PROPOSAL.md`
+แทนที่จะ:   ให้ edge มี explicit state `Calibration` ที่ set/unset ผ่าน message
+            (แผนแรกที่ทีม AI เสนอ 2026-09-07)
+เพราะ:      1) state บน edge = memory ที่ค้างได้ — UI ตายกลาง flow / edge reboot ระหว่าง
+               calib / 2 คนกดพร้อมกัน → เจ็บแบบเดียวกับ RS485 race บน Phase 1 คือ "แก้ทีเดียว
+               ไม่พอ ต้องคิดทุกเคส recover" ทั้ง ๆ ที่ retained config + ephemeral command
+               ตัดปัญหานี้ตั้งแต่ต้น
+            2) config เป็นเรื่อง **declarative** ("นี่คือค่าล่าสุด") ไม่ใช่ event —
+               retained MQTT message match พฤติกรรมนี้เป๊ะ (broker เก็บให้เอง reboot ก็ได้
+               ค่าล่าสุดกลับมา) ; ตรงข้ามกับ command ที่เป็น **event** ("ทำสิ่งนี้ตอนนี้")
+               ที่ต้อง non-retained เด็ดขาด ไม่งั้น reboot loop
+            3) reuse `evidence/` topic เดิมสำหรับ response = ไม่เพิ่ม topic ใหม่ให้ต้องดูแล
+               UI/server รู้จัก pipeline นี้อยู่แล้ว (T-011) แค่เพิ่ม `kind=CALIBRATION`
+               ให้แยกได้ว่ามาจาก command ไม่ใช่จาก reading ปกติ
+            4) DB เป็น source of truth ของ config (มี column `points.fixture` jsonb อยู่แล้ว) —
+               broker retained store เป็น cache/distribution channel ให้ edge เท่านั้น
+               ถ้าไม่ตรงกัน server publish ซ้ำจาก DB ได้เสมอ
+scope:      ยังไม่เขียนโค้ด — เอกสารก่อน คุยกับทีม AI แล้วค่อยแตก T-013 (backend + broker)
+            และ T-014 (UI canvas สำหรับกำหนดจุดบนภาพ) แยกกัน จบคนละรอบ
+trade-off:  - ต้องเพิ่ม MQTT client publish บน server ตอนนี้ (subscribe อย่างเดียว)
+            - **T-008 (auth broker) ยังไม่เสร็จ** = ใครใน LAN ก็ยิง config ปลอมได้
+              ห้าม deploy pattern นี้ในเครือข่ายที่ไม่ trust จน T-008 เสร็จ
+            - "CALIBRATION kind" จะปนกับ evidence ปกติในโฟลเดอร์เดียว
+              (mtime ล่าสุดชนะ — จุดที่เริ่ม infer จะทับ CALIBRATION เก่าเองอัตโนมัติ)
+ทบทวนเมื่อ: ทีม AI ตอบว่ารับ pattern นี้ไหวไหม หรือมีข้อจำกัดฝั่ง edge ที่ทำให้ต้องกลับไป
+            แบบ stateful (ถ้าเจอต้องคิดใหม่จริงจัง)
+
 ## D-016 เพิ่ม WATER_METER เข้าสัญญา + ลบ LAMP + เลิกผูก value_num/value_text กับ kind  (2026-09-03)
 เลือก:      `pointKindSchema` เหลือ `GAUGE`/`SEVEN_SEGMENT`/`WATER_METER` (ตัด `LAMP` ทิ้ง) ·
             กฎ `refine` ใน `messages.ts` เปลี่ยนจาก "LAMP ใช้ value_text นอกนั้น value_num"

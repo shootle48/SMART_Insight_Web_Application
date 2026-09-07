@@ -6,6 +6,21 @@
 
 ---
 
+## เขียน design + tickets สำหรับ calibrate จุดวัดจาก UI  🟢
+- แอดมินขอ feature ตั้ง fixture (cx/cy/r/มุม สำหรับ GAUGE ฯลฯ) จากหน้าเว็บ ให้ edge sub ไป
+  apply — คุย pattern กันแล้ว (2026-09-07) เคาะเลือก command ephemeral + config retained
+  ไม่มี explicit state บน edge (D-017)
+- เขียน `docs/CALIBRATION-PROPOSAL.md` ครบชุด: flow diagram, topic + payload schema 3 topic
+  (command, response, config), กติกาบน edge, เปรียบเทียบ trade-off กับ pattern stateful ที่
+  หลีกเลี่ยง, edge cases, คำถามที่ทีม AI ต้องตอบก่อน merge
+- `docs/DECISIONS.md` — เพิ่ม D-017 บันทึกการเลือก pattern พร้อมเหตุผลจาก 4 มุม (state ค้าง,
+  declarative vs event, reuse pipeline, DB as source of truth)
+- `docs/TICKETS.md` — เพิ่ม T-013 (backend/edge integration — ต้องคุยกับทีม AI ก่อน) และ
+  T-014 (UI canvas สำหรับกำหนดจุดบนภาพ blocked โดย T-013) ; แยกใบเพราะจบคนละรอบ
+- ยังไม่ได้เขียนโค้ด — รอทีม AI ตอบว่ารับ pattern ไหวไหมก่อน
+
+---
+
 ## ล้าง ring buffer ของ sparkline เดิมที่ค้างทำงานทั้งที่ไม่มีใครใช้แล้ว  🟢
 - ตามที่ค้างไว้จากรอบก่อน (เอา gauge/sparkline ออกจาก UI แต่ยังไม่ได้ล้าง state เบื้องหลัง)
 - `useLiveData.ts` — เอา state `spark`, `SPARK_LIMIT`, type `SparkPoint`, และการยิง

@@ -6,6 +6,51 @@
 
 # Active
 
+## T-014 [P2] UI canvas ให้แอดมินคลิกกำหนดจุด calibration บนภาพ — todo
+why:        ครึ่งหลังของ D-017 (calibrate จาก UI) — ครึ่งแรกคือ backend/broker plumbing (T-013)
+            ครึ่งนี้คือให้แอดมินคลิกกำหนด cx/cy/r/มุม (GAUGE) หรือลาก bbox (SEVEN_SEGMENT)
+            บนภาพจริง ; ตอนนี้ไม่มี UI ทำเรื่องนี้เลย
+scope:      component canvas ใหม่ในแผงรายละเอียด (`PointDetail.tsx`) — โหลดภาพจาก
+            `/api/evidence/:pointId/latest` เป็น background · overlay SVG ที่คลิกกำหนดค่า
+            ตาม kind · ปุ่ม "ขอภาพใหม่" ยิง command ผ่าน server (ไม่ pub ตรงจาก browser
+            ห้ามให้ browser เขียน MQTT ตรง) · ปุ่ม Done ยิง `PATCH /api/points/:id/fixture`
+            (extend endpoint ที่มีอยู่แล้ว)
+done-when:  แอดมินเปิดจุดใหม่ (ไม่มี fixture) → กด "ขอภาพ" → คลิก 3 จุดบน gauge (ศูนย์กลาง
+            + min + max) → กด Done → refresh หน้า edge อ่านค่าได้ถูก · **verify ด้วย point
+            จริงบน dev (mock edge)** ไม่ใช่แค่ mock canvas
+note:       ต้อง block ทำใบนี้จนกว่า T-013 (backend + edge integration) เสร็จก่อน — ไม่ใช้
+            งานได้ถ้ายังไม่มี command topic + config publish · ⚠️ 3 kinds (GAUGE/7SEG/
+            WATER_METER) คนละ shape กัน ต้อง discriminated union ตาม `pointFixtureSchema`
+            เริ่มจาก GAUGE ก่อน (ใช้เยอะสุด) แล้ว 7SEG · WATER_METER ยังไม่มี fixture schema
+            (ดู D-016) เอาไว้ทีหลัง
+
+## T-013 [P2] backend + edge integration สำหรับ calibrate ผ่าน UI — todo
+why:        D-017 เคาะ pattern แล้ว ; ครึ่งแรกคือทำให้ browser สั่ง snap + publish config
+            retained ผ่าน server ได้ (ไม่ให้ browser ยิง MQTT ตรง) · ยังไม่มีอะไรทำเรื่องนี้เลย
+            ตอนนี้ MQTT publish บน server ไม่มีเลย (subscribe อย่างเดียว)
+scope:      - เพิ่ม MQTT publisher ใน `src/server/ingest/` (reuse connection ที่ subscribe อยู่)
+            - endpoint `POST /api/points/:id/request-calibration-snap` → publish command
+              (non-retained, QoS 1) พร้อม `request_id` ที่ server สร้าง
+            - endpoint `PATCH /api/points/:id/fixture` → update DB + publish `config/<point>`
+              (retained, QoS 1) พร้อม validate payload ด้วย `pointFixtureSchema`
+            - endpoint `POST /api/points/:id/republish-config` → re-sync retained ↔ DB
+              (fallback ถ้า broker หาย retained หรือ edge ใหม่เข้ามา)
+            - ingest ต้องรู้จัก `kind=CALIBRATION` ใน evidence topic → เซฟไฟล์เหมือนเดิม
+              แต่มี metadata ให้แยกได้ (log line? path? — เคาะตอนทำ)
+            - **คุยกับทีม AI ให้เพิ่ม 2 sub บน edge ก่อน**: `command/snap-for-calibration`
+              และ `config/<point_id>` (retained)
+done-when:  บน dev — `curl -X POST /api/points/pt-a-boiler-pressure/request-calibration-snap`
+            แล้วเห็น mosquitto_sub รับ command · `curl -X PATCH /api/points/…/fixture` กับ
+            payload GAUGE valid แล้วเห็น retained ที่ `mosquitto_sub -t 'meter/+/config/+'` ·
+            payload invalid → 400 + zod error message · **บน Pi พร้อม edge จริง** — ยิง PATCH
+            แล้ว edge apply config ทันที (readings ที่ตามมาต้องเปลี่ยนตาม)
+note:       ห้ามให้ browser publish MQTT ตรง (แม้ mqtt-over-websocket จะทำได้) เพราะ:
+            (1) ยัง auth ไม่ได้จนกว่า T-008 · (2) validate ที่ 2 ที่ต้อง sync กัน · (3) DB
+            กับ broker ควรเป็นเรื่องเดียวกันจาก view ของ browser · flow: browser → HTTP →
+            server (validate + write DB + publish) → broker → edge
+            ⚠️ **T-008 (auth) ยังไม่ทำ** = ตอนนี้ใครใน LAN ก็ส่ง command/config ปลอมได้
+            ถ้าจะ deploy หน้างานก่อน T-008 ต้อง firewall กัน broker port ให้แน่นก่อน
+
 ## T-011 [P2] รับ snapshot จาก edge — doing
 why:        ภาพตอน UNREADABLE คือหลักฐานว่าทำไมอ่านไม่ออก ซึ่งเป็นกุญแจแก้ปัญหา 47% ที่ค้างอยู่
 scope:      subscribe `<prefix>/+/evidence/+/+/+` (**คนละ subscription กับ `meter/+/+` เดิม**
