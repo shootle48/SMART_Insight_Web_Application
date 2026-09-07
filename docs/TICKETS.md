@@ -56,8 +56,12 @@ progress:   2026-09-07 เสร็จส่วน "config": `contract/points.ts
             `POST .../republish-config` (อ่าน DB republish retained ซ้ำ, validate ซ้ำกัน
             fixture เก่าไม่ตรง schema) · `evidence.ts` ใส่ kind เข้า log ไม่แก้ path (ไม่จำเป็น
             เพราะ kind ไม่เคยมีผลต่อ path) ; ทดสอบยืนยัน retain:false ของ command จริง ;
-            **ที่เหลือ (บล็อกอยู่ฝั่งทีม AI)**: เพิ่ม 2 sub บน edge จริง + ทดสอบ end-to-end
-            บน Pi กับ edge จริง — ฝั่งเราทำครบตาม scope ที่ตั้งไว้แล้ว
+            2026-09-07 ทีม AI ยืนยันแล้วว่า `mosquitto_sub` บน Pi เห็นทั้ง 2 topic
+            (`command/snap-for-calibration`, `config/+`) ปกติ payload ตรงตามสัญญาที่ตกลงกัน —
+            ผ่านขั้น "verify shape ก่อนเขียนโค้ด" แล้ว (ดูขั้นตอนทดสอบใน CHANGELOG)
+            **ที่เหลือ (บล็อกอยู่ฝั่งทีม AI)**: เขียน edge sub จริง + ตอบกลับ evidence
+            `kind=CALIBRATION` และ apply config ที่ได้รับ แล้วทดสอบ end-to-end กับ edge จริง —
+            ฝั่งเราทำครบตาม scope ที่ตั้งไว้แล้ว
 note:       ห้ามให้ browser publish MQTT ตรง (แม้ mqtt-over-websocket จะทำได้) เพราะ:
             (1) ยัง auth ไม่ได้จนกว่า T-008 · (2) validate ที่ 2 ที่ต้อง sync กัน · (3) DB
             กับ broker ควรเป็นเรื่องเดียวกันจาก view ของ browser · flow: browser → HTTP →
