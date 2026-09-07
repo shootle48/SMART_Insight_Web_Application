@@ -29,6 +29,12 @@ export const evidenceIngestStats = () => ({ ...evidenceStats, dir: EVIDENCE_DIR,
  *
  * ตั้งใจไม่ validate ว่าเป็น JPEG จริงไหม (เช่นเช็ค magic bytes) — เขียนไฟล์ไปตามที่
  * ได้มา ถ้าไฟล์เสียคนดูภาพจะเห็นเองว่าเปิดไม่ขึ้น ดีกว่าทิ้งเงียบ ๆ แล้วไม่มีหลักฐานเลย
+ *
+ * `info.kind` (ท้าย topic) ไม่มีผลต่อ path การเซฟเลย — ภาพจาก command "ขอ calibrate"
+ * (`kind: "CALIBRATION"`, T-013) เซฟทับตำแหน่งเดียวกับภาพจาก reading ปกติ
+ * (`<device>/<point>/<frame_id>.jpg`) ใส่ไว้แค่ใน log เพื่อ trace ย้อนหลังได้ว่าภาพไหน
+ * มาจาก command ไหนมาจาก reading — ไม่ต้องแยกโฟลเดอร์เพราะ "ภาพล่าสุด" (mtime) คือสิ่งที่
+ * ทุก endpoint ใช้อยู่แล้ว ไม่สนใจที่มา
  */
 export async function handleEvidence(
   info: { deviceId: string; frameId: string; pointId: string; kind: string },
@@ -39,7 +45,7 @@ export async function handleEvidence(
   if (payload.byteLength > MAX_EVIDENCE_BYTES) {
     evidenceStats.rejected_too_large += 1;
     console.warn(
-      `[evidence] ข้ามภาพจาก ${info.deviceId}/${info.pointId} — ใหญ่เกิน ${MAX_EVIDENCE_BYTES} bytes (ได้ ${payload.byteLength})`,
+      `[evidence] ข้ามภาพจาก ${info.deviceId}/${info.pointId} (${info.kind}) — ใหญ่เกิน ${MAX_EVIDENCE_BYTES} bytes (ได้ ${payload.byteLength})`,
     );
     return;
   }
@@ -54,7 +60,10 @@ export async function handleEvidence(
     evidenceStats.saved += 1;
   } catch (e) {
     evidenceStats.failed += 1;
-    console.error(`[evidence] เซฟภาพจาก ${info.deviceId}/${info.pointId} ไม่สำเร็จ:`, e instanceof Error ? e.message : e);
+    console.error(
+      `[evidence] เซฟภาพจาก ${info.deviceId}/${info.pointId} (${info.kind}) ไม่สำเร็จ:`,
+      e instanceof Error ? e.message : e,
+    );
   }
 }
 

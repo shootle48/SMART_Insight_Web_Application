@@ -6,6 +6,30 @@
 
 ---
 
+## T-013 ช่วง 2/3: endpoint ขอภาพ calibrate + republish-config  🟡
+- ต่อจากช่วง 1/3 — เพิ่มอีก 2 endpoint ที่ scope ไว้ใน T-013
+- `POST /api/points/:id/request-calibration-snap` — publish command แบบ non-retained
+  ไป `command/snap-for-calibration` พร้อม `request_id` ที่ server สร้าง ; เช็ค
+  `device_status` ก่อนเสมอ (409 ถ้า OFFLINE กันยิงคำสั่งไปเครื่องที่ไม่ได้ต่ออยู่) ;
+  publish ล้มเหลว → 503 (ต่างจาก PATCH fixture — command ไม่มี DB ให้ fallback เพราะเป็น
+  event ชั่วคราวล้วน ๆ ไม่ใช่ config)
+- `POST /api/points/:id/republish-config` — อ่าน fixture จาก DB แล้ว publish retained ซ้ำ
+  ใช้กู้กรณี broker ทำ retained หายหรือ edge ใหม่ต่อเข้ามา ; validate ซ้ำก่อน publish
+  เผื่อ fixture เก่าที่บันทึกไว้ไม่ตรง schema ปัจจุบันแล้ว (409 ถ้าไม่ตรง)
+- `server/ingest/evidence.ts` — ใส่ `kind` เข้า log line (warn/error) เพื่อ trace ได้ว่า
+  ภาพมาจาก command calibrate หรือ reading ปกติ ; **ไม่แก้ path การเซฟไฟล์เลย** เพราะ
+  `kind` ไม่เคยมีผลต่อ path อยู่แล้ว (ภาพ CALIBRATION ทับตำแหน่งเดียวกับภาพปกติของจุดนั้น
+  โดยธรรมชาติ ตามที่ตั้งใจไว้ใน design doc)
+- verify: `bun run type-check` ผ่านสะอาด ; ทดสอบผ่าน curl + `mosquitto_sub` บน dev —
+  command topic ยืนยัน retain:false จริง (sub ใหม่ทีหลัง timeout ไม่ได้ค่าเก่า) ;
+  republish-config ทำงานถูกต้องทั้ง 3 เคส (มี fixture / ไม่มี fixture → 400 / point
+  ปลอม → 404) ; `/api/health` ยืนยัน `ingest.invalid: 0` ไม่กระทบ pipeline เดิม
+- เหลือใน T-013: คุยทีม AI ให้เพิ่ม 2 sub บน edge จริง (`command/snap-for-calibration`,
+  `config/+`) ; ทดสอบ end-to-end กับ edge จริงบน Pi (ตอนนี้ทดสอบได้แค่ผ่าน mosquitto_sub
+  จำลอง edge ยังไม่มี edge จริงตอบกลับ) — จบ T-013 ฝั่งเราแล้ว ที่เหลือรอฝั่งเขา
+
+---
+
 ## T-013 ช่วง 1/3: MQTT publish บน server + `PATCH /api/points/:id/fixture`  🟡
 - ทีม AI ไฟเขียว pattern ใน D-017/D-018 แล้ว เริ่มเขียนโค้ดจริง — ช่วงนี้ทำแกนกลาง
   (publish capability) ที่ endpoint อื่นของ T-013 ต้องพึ่ง ยังไม่ทำ snap-command/

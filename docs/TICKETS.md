@@ -50,8 +50,14 @@ progress:   2026-09-07 เสร็จส่วน "config": `contract/points.ts
             array + bbox เศษส่วน) · เพิ่ม `publish()` ใน `server/ingest/index.ts` (ใช้ client
             เดียวกับที่ subscribe) · `PATCH /api/points/:id/fixture` ครบวงจร (validate→DB→
             publish retained) ทดสอบผ่าน curl+mosquitto_sub จริงบน dev ครบ 3 เคส validate +
-            retained ทำงานถูกต้อง ; ที่เหลือ: snap-command endpoint, republish-config endpoint,
-            evidence kind=CALIBRATION handling, คุยทีม AI เรื่อง 2 sub บน edge
+            retained ทำงานถูกต้อง
+            2026-09-07 เสร็จส่วน "command + republish": `POST .../request-calibration-snap`
+            (เช็ค device ONLINE ก่อน, publish non-retained, 503 ถ้า mqtt ไม่พร้อม) ·
+            `POST .../republish-config` (อ่าน DB republish retained ซ้ำ, validate ซ้ำกัน
+            fixture เก่าไม่ตรง schema) · `evidence.ts` ใส่ kind เข้า log ไม่แก้ path (ไม่จำเป็น
+            เพราะ kind ไม่เคยมีผลต่อ path) ; ทดสอบยืนยัน retain:false ของ command จริง ;
+            **ที่เหลือ (บล็อกอยู่ฝั่งทีม AI)**: เพิ่ม 2 sub บน edge จริง + ทดสอบ end-to-end
+            บน Pi กับ edge จริง — ฝั่งเราทำครบตาม scope ที่ตั้งไว้แล้ว
 note:       ห้ามให้ browser publish MQTT ตรง (แม้ mqtt-over-websocket จะทำได้) เพราะ:
             (1) ยัง auth ไม่ได้จนกว่า T-008 · (2) validate ที่ 2 ที่ต้อง sync กัน · (3) DB
             กับ broker ควรเป็นเรื่องเดียวกันจาก view ของ browser · flow: browser → HTTP →

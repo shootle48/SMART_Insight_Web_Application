@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/index";
-import { points } from "../../db/schema";
+import { points, devices } from "../../db/schema";
 import { meterTopics, pointFixtureSchema } from "../../contract";
 import { publish } from "../ingest/index";
 
@@ -119,6 +119,72 @@ pointsApi.patch("/:pointId/fixture", async (c) => {
     point: updated,
     ...(published ? {} : { warning: "บันทึกแล้วแต่ยังส่งให้ edge ไม่ได้ (MQTT ยังไม่พร้อม) — ลอง republish ภายหลัง" }),
   });
+});
+
+/**
+ * ขอภาพดิบสำหรับ calibrate — publish command แบบ non-retained ไป edge (D-017)
+ *
+ * ไม่มี DB ให้เขียน (เป็น event ชั่วคราวล้วน ๆ ไม่ใช่ config) — publish ล้มเหลวจึงถือเป็น
+ * ความล้มเหลวจริงของ request นี้ (ต่างจาก PATCH fixture ที่ DB เขียนสำเร็จแล้วเสมอ)
+ * เพราะไม่มีอะไรให้ republish ทีหลังถ้าตอนนี้ยิงไม่ถึง
+ *
+ * `request_id` ให้ UI ใช้ตรวจว่าภาพที่ได้ผ่าน evidence topic กลับมาเป็นของ request ไหน
+ * (ทีม AI แนะนำให้ใช้ตัวนี้เป็น frame_id ของภาพที่ส่งกลับ — ดู CALIBRATION-PROPOSAL.md)
+ */
+pointsApi.post("/:pointId/request-calibration-snap", async (c) => {
+  const pointId = c.req.param("pointId");
+
+  const [point] = await db
+    .select({ device_id: points.device_id, kind: points.kind })
+    .from(points)
+    .where(eq(points.point_id, pointId));
+  if (!point) return c.json({ error: `ไม่พบจุดวัด ${pointId}` }, 404);
+
+  const [device] = await db
+    .select({ status: devices.status })
+    .from(devices)
+    .where(eq(devices.device_id, point.device_id));
+  if (device?.status !== "ONLINE") {
+    return c.json({ error: `เครื่อง ${point.device_id} ออฟไลน์อยู่ ขอภาพไม่ได้ตอนนี้` }, 409);
+  }
+
+  const requestId = `req-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+  const topic = meterTopics.snapForCalibration(point.device_id);
+  const payload = JSON.stringify({ point_id: pointId, kind: point.kind, request_id: requestId });
+  const published = publish(topic, payload, { retain: false, qos: 1 });
+
+  if (!published) return c.json({ error: "ส่งคำสั่งไม่สำเร็จ (MQTT ยังไม่พร้อม) — ลองใหม่อีกครั้ง" }, 503);
+  return c.json({ request_id: requestId });
+});
+
+/**
+ * Re-publish fixture ที่มีอยู่แล้วใน DB ไปเป็น retained config ใหม่ — กู้กรณี broker
+ * ทำ retained store หาย หรือ edge ตัวใหม่เพิ่งต่อเข้ามาแล้วอยากได้ config ทันทีไม่ต้องรอ
+ * ใครมาแก้ค่าอะไรก่อน (DB คือ source of truth เสมอ ดู D-017 หัวข้อ trade-off)
+ */
+pointsApi.post("/:pointId/republish-config", async (c) => {
+  const pointId = c.req.param("pointId");
+
+  const [point] = await db
+    .select({ device_id: points.device_id, fixture: points.fixture })
+    .from(points)
+    .where(eq(points.point_id, pointId));
+  if (!point) return c.json({ error: `ไม่พบจุดวัด ${pointId}` }, 404);
+  if (!point.fixture) return c.json({ error: `จุดวัด ${pointId} ยังไม่มี fixture ให้ republish` }, 400);
+
+  // เผื่อ schema เปลี่ยนหลังจากที่เคยบันทึกไว้ (เช่น D-018) — ของเก่าที่ไม่ตรง schema
+  // ปัจจุบันไม่ควรถูก publish ซ้ำออกไปทั้งที่ edge จะ parse ไม่ผ่านอยู่ดี
+  const parsed = pointFixtureSchema.safeParse(point.fixture);
+  if (!parsed.success) {
+    return c.json({ error: "fixture ที่บันทึกไว้ไม่ตรง schema ปัจจุบัน ต้องตั้งค่าใหม่ก่อน" }, 409);
+  }
+
+  const topic = meterTopics.config(point.device_id, pointId);
+  const payload = JSON.stringify({ point_id: pointId, ...parsed.data });
+  const published = publish(topic, payload, { retain: true, qos: 1 });
+
+  if (!published) return c.json({ error: "ส่งไม่สำเร็จ (MQTT ยังไม่พร้อม) — ลองใหม่อีกครั้ง" }, 503);
+  return c.json({ published: true, point_id: pointId, device_id: point.device_id });
 });
 
 /** แปลง "15m" / "6h" / "7d" เป็นวินาที ; คืน null ถ้ารูปแบบผิด */
