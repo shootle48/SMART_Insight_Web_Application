@@ -1,42 +1,53 @@
 // จุดวัด (point) = หน้าปัดหนึ่งหน้าที่เราสั่งให้ AI อ่าน
 //
-// คำศัพท์ทั้งหมดในไฟล์นี้ยกมาจากของจริงที่ใช้ทำ bench แล้ว — `../../bench/samples.json`
-// (`cx, cy, r, min_angle, max_angle, min_value, max_value, unit`) ไม่ได้คิดขึ้นใหม่
-// เพื่อให้ฝั่ง AI ที่เขียน gauge_bench.py อ่านแล้วเข้าใจตรงกันทันที
+// พิกัดทั้งหมดในไฟล์นี้เป็น**เศษส่วน 0–1 ของขนาดภาพเต็ม** ไม่ใช่ pixel ตรง ๆ (D-018,
+// เปลี่ยนจากโมเดล cx/cy/r/min_angle/max_angle เดิมตามฟีดแบ็กทีม AI 2026-09-07) —
+// px ผูกกับ resolution กล้องเป๊ะ เปลี่ยนกล้อง/ปรับความละเอียดแล้ว fixture เดิมพังทันที
+// เศษส่วนไม่ผูกกับ resolution ใด ๆ เลย
 //
-// ทิศทาง: **เราเป็นคนนิยาม แล้ว push ลงไปที่ edge** (ยังไม่ได้ทำ — ดู OPEN-3 ใน messages.ts)
+// ทิศทาง: **เราเป็นคนนิยาม แล้ว push ลงไปที่ edge** ผ่าน topic `config/<point_id>`
+// (retained) — ดู `docs/CALIBRATION-PROPOSAL.md`
 
 import { z } from "zod";
 
 export const pointKindSchema = z.enum([
-  "GAUGE", // หน้าปัดเข็ม — สอบเทียบด้วยจุดศูนย์กลาง+รัศมี+ช่วงมุม
+  "GAUGE", // หน้าปัดเข็ม — สอบเทียบด้วยจุดอ้างอิงบนภาพ (ตำแหน่ง+ค่าจริง) อย่างน้อย 2 จุด
   "SEVEN_SEGMENT", // จอตัวเลข 7 ส่วน — สอบเทียบด้วยกรอบสี่เหลี่ยม
   "WATER_METER", // มิเตอร์น้ำ — อ่านออกมาเป็นข้อความ (เช่นเลขนับ) ยังไม่มี fixture schema ของตัวเอง
 ]);
 export type PointKind = z.infer<typeof pointKindSchema>;
 
-/** กรอบสี่เหลี่ยมบนภาพจากกล้อง หน่วยเป็น pixel ของภาพเต็ม */
-export const bboxSchema = z.object({
-  x: z.number().int().min(0),
-  y: z.number().int().min(0),
-  w: z.number().int().positive(),
-  h: z.number().int().positive(),
+/** กรอบสี่เหลี่ยมบนภาพจากกล้อง — x,y,w,h เป็นเศษส่วน 0–1 ของขนาดภาพเต็ม (มุมบนซ้าย+กว้าง/สูง) */
+export const bboxSchema = z
+  .object({
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    w: z.number().min(0).max(1),
+    h: z.number().min(0).max(1),
+  })
+  // ตรวจได้ทันทีตอนนี้เพราะเป็นเศษส่วนแล้ว (ตอนเป็น px ตรวจไม่ได้จนกว่าจะรู้ resolution จริง)
+  .refine((v) => v.x + v.w <= 1, { message: "กรอบล้นขอบขวาของภาพ (x + w ต้อง ≤ 1)", path: ["w"] })
+  .refine((v) => v.y + v.h <= 1, { message: "กรอบล้นขอบล่างของภาพ (y + h ต้อง ≤ 1)", path: ["h"] });
+
+/** จุดอ้างอิงหนึ่งจุดบนภาพ — ตำแหน่งเป็นเศษส่วน 0–1 + ค่าจริงของหน้าปัด ณ ตำแหน่งนั้น */
+export const calibrationPointSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  value: z.number(),
 });
 
-// สอบเทียบหน้าปัดเข็ม — โครงเดียวกับ record ใน bench/samples.json เป๊ะ
+// สอบเทียบหน้าปัดเข็มด้วยจุดอ้างอิง (D-018) — ไม่ผูกกับรูปทรงวงกลม/มุมเชิงเส้นเหมือนเดิม
+// โมเดล AI เป็นคนตีความ (interpolate) ตอนอ่านค่าจริง เราแค่เก็บ+relay จุดที่คนกำหนดไว้
 export const gaugeFixtureSchema = z.object({
   kind: z.literal("GAUGE"),
-  cx: z.number(), // จุดศูนย์กลางหน้าปัด (px)
-  cy: z.number(),
-  r: z.number().positive(), // รัศมี (px)
-  min_angle: z.number(), // มุมของขีดต่ำสุด (เรเดียน, atan2 mod 2π)
-  max_angle: z.number(), // มุมของขีดสูงสุด
+  // อย่างน้อย 2 จุดพอสำหรับ fit เส้นตรง ; ใส่ 3+ ได้ถ้าต้องการรองรับสเกลไม่เชิงเส้น
+  // (ไม่ validate ว่าจุดที่ให้มา "สมเหตุสมผล" ทางเรขาคณิต — เป็นหน้าที่โมเดล AI ตอนอ่านค่า)
+  calibration: z.array(calibrationPointSchema).min(2, "ต้องมีจุดอ้างอิงอย่างน้อย 2 จุด"),
 });
 // ⚠️ ตั้งใจไม่มี min_value/max_value ในนี้ ต่างจาก record ใน bench/samples.json
 // สเกลของหน้าปัด (อ่านได้ถึงเท่าไหร่) กับตำแหน่งเข็มในภาพ เป็นคนละเรื่องที่เปลี่ยนคนละจังหวะ:
 // ขยับกล้อง → fixture เปลี่ยน แต่สเกลเท่าเดิม ; เปลี่ยนตัวมิเตอร์ → สเกลเปลี่ยน แต่กล้องเท่าเดิม
 // รวมไว้ด้วยกันจะทำให้ตั้งกล้องใหม่ทีต้องกรอกสเกลใหม่ทุกครั้ง
-// samples.json รวมไว้เพราะเป็นไฟล์ bench ไม่ใช่โครงของระบบ → ย้ายขึ้นไปอยู่ที่ pointConfig
 
 export const sevenSegmentFixtureSchema = z.object({
   kind: z.literal("SEVEN_SEGMENT"),
@@ -62,7 +73,8 @@ export const pointConfigSchema = z.object({
   // ของจริงใน samples.json ใช้ "-" แทนไม่มีหน่วย — ฝั่งเราใช้ null ให้ชัดกว่า
   unit: z.string().min(1).nullable(),
 
-  // สเกลที่หน้าปัดอ่านได้ — UI ใช้วาดเกจ, AI ใช้แปลงมุมเข็มเป็นค่า
+  // สเกลที่หน้าปัดอ่านได้ — ใช้วาดเกจ/ตรวจ "เกินสเกล" เท่านั้น ไม่เกี่ยวกับ fixture
+  // (fixture คือจุดอ้างอิงบนภาพ ดู gaugeFixtureSchema)
   // null ได้สำหรับจุดที่ไม่มีสเกล (เช่น WATER_METER ที่อ่านเป็นข้อความ) หรือจุดที่ยังไม่มีคนตั้งค่า
   min_value: z.number().nullable(),
   max_value: z.number().nullable(),

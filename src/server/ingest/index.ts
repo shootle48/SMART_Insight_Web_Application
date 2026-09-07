@@ -26,6 +26,37 @@ import { handleEvidence, ensureEvidenceDir } from "./evidence";
 
 const BROKER_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
 
+// client เดียวกันกับที่ subscribe ใช้ publish ด้วย (T-013 — calibrate จาก UI)
+// เก็บไว้ module-level เพราะมีแค่ connection เดียวทั้งแอป ; เป็น null ตอนที่ INGEST=false
+// (โหมด debug หน้าเว็บอย่างเดียว) หรือก่อน startIngest() ถูกเรียก
+let mqttClient: mqtt.MqttClient | null = null;
+
+/**
+ * Publish ผ่าน client เดียวกับที่ subscribe อยู่ — ไม่เปิด connection ที่สอง
+ *
+ * ไม่ throw เมื่อ client ยังไม่พร้อม (INGEST=false หรือยังไม่ connect) — งานที่เรียกใช้
+ * (เช่น PATCH fixture) ต้อง**เขียน DB ให้สำเร็จได้เสมอ**ไม่ว่า MQTT จะพร้อมหรือไม่
+ * DB คือ source of truth ; broker เป็นแค่ทางกระจายให้ edge — publish ซ้ำได้ทีหลังผ่าน
+ * republish-config ถ้าตอนนี้ยังไม่พร้อม (ดู CALIBRATION-PROPOSAL.md)
+ *
+ * ไม่ต้องรอ callback/ack — mqtt.js คิวข้อความเองตอนหลุดการเชื่อมต่อแล้วส่งซ้ำตอนกลับมา
+ * (clean:false + reconnectPeriod ที่ตั้งไว้ใน startIngest แล้ว)
+ */
+export function publish(
+  topic: string,
+  payload: string | Buffer,
+  opts: { retain?: boolean; qos?: 0 | 1 | 2 } = {},
+): boolean {
+  if (!mqttClient) {
+    console.error(`[publish] mqtt client ยังไม่พร้อม — ข้ามการส่ง ${topic}`);
+    return false;
+  }
+  mqttClient.publish(topic, payload, { qos: opts.qos ?? 1, retain: opts.retain ?? false }, (err) => {
+    if (err) console.error(`[publish] ส่งไม่สำเร็จ ${topic}:`, err.message);
+  });
+  return true;
+}
+
 // clientId ต้องคงที่ ไม่ผูกกับ pid — ไม่งั้น clean:false ไร้ความหมาย
 // เพราะ broker จะมองว่าเป็น client คนละตัวทุกครั้งที่ restart แล้วทิ้งคิวเดิม
 const CLIENT_ID = process.env.MQTT_CLIENT_ID ?? "meter-ingest";
@@ -220,6 +251,7 @@ export function startIngest() {
     clean: false,
     reconnectPeriod: 2_000,
   });
+  mqttClient = client;
 
   client.on("connect", () => {
     client.subscribe(meterTopics.all(), { qos: 1 }, (err) => {

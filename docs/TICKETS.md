@@ -26,7 +26,7 @@ note:       ต้อง block ทำใบนี้จนกว่า T-013 (ba
             เริ่มจาก GAUGE ก่อน (ใช้เยอะสุด) แล้ว 7SEG · WATER_METER ยังไม่มี fixture schema
             (ดู D-016) เอาไว้ทีหลัง
 
-## T-013 [P2] backend + edge integration สำหรับ calibrate ผ่าน UI — todo
+## T-013 [P2] backend + edge integration สำหรับ calibrate ผ่าน UI — doing
 why:        D-017 เคาะ pattern แล้ว ; ครึ่งแรกคือทำให้ browser สั่ง snap + publish config
             retained ผ่าน server ได้ (ไม่ให้ browser ยิง MQTT ตรง) · ยังไม่มีอะไรทำเรื่องนี้เลย
             ตอนนี้ MQTT publish บน server ไม่มีเลย (subscribe อย่างเดียว)
@@ -46,6 +46,12 @@ done-when:  บน dev — `curl -X POST /api/points/pt-a-boiler-pressure/reques
             payload GAUGE valid แล้วเห็น retained ที่ `mosquitto_sub -t 'meter/+/config/+'` ·
             payload invalid → 400 + zod error message · **บน Pi พร้อม edge จริง** — ยิง PATCH
             แล้ว edge apply config ทันที (readings ที่ตามมาต้องเปลี่ยนตาม)
+progress:   2026-09-07 เสร็จส่วน "config": `contract/points.ts` แก้ตาม D-018 จริง (calibration
+            array + bbox เศษส่วน) · เพิ่ม `publish()` ใน `server/ingest/index.ts` (ใช้ client
+            เดียวกับที่ subscribe) · `PATCH /api/points/:id/fixture` ครบวงจร (validate→DB→
+            publish retained) ทดสอบผ่าน curl+mosquitto_sub จริงบน dev ครบ 3 เคส validate +
+            retained ทำงานถูกต้อง ; ที่เหลือ: snap-command endpoint, republish-config endpoint,
+            evidence kind=CALIBRATION handling, คุยทีม AI เรื่อง 2 sub บน edge
 note:       ห้ามให้ browser publish MQTT ตรง (แม้ mqtt-over-websocket จะทำได้) เพราะ:
             (1) ยัง auth ไม่ได้จนกว่า T-008 · (2) validate ที่ 2 ที่ต้อง sync กัน · (3) DB
             กับ broker ควรเป็นเรื่องเดียวกันจาก view ของ browser · flow: browser → HTTP →

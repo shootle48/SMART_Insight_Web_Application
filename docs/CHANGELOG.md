@@ -6,6 +6,29 @@
 
 ---
 
+## T-013 ช่วง 1/3: MQTT publish บน server + `PATCH /api/points/:id/fixture`  🟡
+- ทีม AI ไฟเขียว pattern ใน D-017/D-018 แล้ว เริ่มเขียนโค้ดจริง — ช่วงนี้ทำแกนกลาง
+  (publish capability) ที่ endpoint อื่นของ T-013 ต้องพึ่ง ยังไม่ทำ snap-command/
+  republish-config/evidence CALIBRATION (แยกไว้ช่วงถัดไป)
+- อัปเดต `contract/points.ts` ตาม D-018 จริง: `gaugeFixtureSchema` เป็น
+  `{calibration: [{x,y,value}]}` ขั้นต่ำ 2 จุด (message ไทยกำกับ) ; `bboxSchema` เป็น
+  เศษส่วน 0-1 พร้อม `.refine` ตรวจ `x+w≤1`/`y+h≤1` (ตรวจได้ทันทีเพราะไม่ต้องรู้ resolution
+  จริงเหมือนตอนเป็น px)
+- เพิ่ม topic helpers `snapForCalibration()`/`config()` ใน `contract/topics.ts`
+- `server/ingest/index.ts` — เพิ่ม `publish()` export ใช้ client เดียวกับที่ subscribe
+  (ไม่เปิด connection ที่สอง) ; ไม่ throw เมื่อ mqtt ยังไม่พร้อม (INGEST=false หรือยังไม่ต่อ)
+  เพราะ DB ต้องเขียนสำเร็จได้เสมอไม่ว่า broker จะพร้อมหรือไม่
+- `PATCH /api/points/:pointId/fixture` ([src/server/api/points.ts](src/server/api/points.ts))
+  — validate ด้วย `pointFixtureSchema` → เขียน DB → publish retained ไป
+  `meter/<device>/config/<point_id>` ; publish ล้มเหลวไม่ทำให้ request ล้มตาม (คืน
+  `warning` field แทน)
+- verify: `bun run type-check` ผ่านสะอาด ; ทดสอบจริงผ่าน curl + `mosquitto_sub` บน dev —
+  PATCH สำเร็จแล้วเห็น retained message ที่ broker ทันที ; sub ใหม่ทีหลังยังได้ค่าเดิม
+  (retained ทำงานจริง) ; validate ครบ 3 เคส (calibration <2 จุด, bbox ล้นขอบ, point_id
+  ปลอม) ผ่านหมด ; `/api/health` ยืนยัน `ingest.invalid: 0` ไม่กระทบ pipeline เดิม
+
+---
+
 ## แก้ GAUGE calibration schema ตามฟีดแบ็กทีม AI: วงกลม(px) → จุดอ้างอิง(%)  🟢
 - ทีม AI ทักกลับหลังอ่าน `CALIBRATION-PROPOSAL.md` — px ผูกกับ resolution กล้อง เปลี่ยนกล้อง/
   ความละเอียดแล้ว config เดิมใช้ไม่ได้เลย เสนอเปลี่ยนเป็นจุดอ้างอิง (x%, y%, value) แทน

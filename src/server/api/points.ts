@@ -1,10 +1,12 @@
-// ค่าล่าสุดทุกจุด + ประวัติย้อนหลังของจุดเดียว + ตั้งค่าจุด (label/หน่วย/สเกล)
+// ค่าล่าสุดทุกจุด + ประวัติย้อนหลังของจุดเดียว + ตั้งค่าจุด (label/หน่วย/สเกล/fixture)
 
 import { Hono } from "hono";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/index";
 import { points } from "../../db/schema";
+import { meterTopics, pointFixtureSchema } from "../../contract";
+import { publish } from "../ingest/index";
 
 export const pointsApi = new Hono();
 
@@ -82,6 +84,41 @@ pointsApi.patch("/:pointId", async (c) => {
 
   if (!updated) return c.json({ error: `ไม่พบจุดวัด ${pointId}` }, 404);
   return c.json({ point: updated });
+});
+
+/**
+ * ตั้ง/แก้ fixture (ค่า calibration) ของจุดวัด — คนละเรื่องกับ label/หน่วย/สเกลด้านบน
+ * ตั้งใจแยก endpoint เพราะ fixture เปลี่ยนคนละจังหวะกับสเกล (ดู comment ใน contract/points.ts)
+ *
+ * บันทึกลง DB ก่อนเสมอ แล้วค่อย publish retained ไปให้ edge ผ่าน topic `config/<point_id>`
+ * (D-017/D-018) — DB คือ source of truth ; publish ล้มเหลว (edge ยังไม่พร้อม/mqtt ยังไม่ต่อ)
+ * ไม่ทำให้การบันทึกล้มตาม แค่แจ้งเตือนกลับไปให้ UI เห็นว่ายังไม่ถึง edge จริง
+ */
+pointsApi.patch("/:pointId/fixture", async (c) => {
+  const pointId = c.req.param("pointId");
+  const body = await c.req.json().catch(() => null);
+  const parsed = pointFixtureSchema.safeParse(body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return c.json({ error: issue ? `${issue.path.join(".")}: ${issue.message}` : "fixture ไม่ถูกต้อง" }, 400);
+  }
+
+  const [updated] = await db
+    .update(points)
+    .set({ fixture: parsed.data })
+    .where(eq(points.point_id, pointId))
+    .returning();
+
+  if (!updated) return c.json({ error: `ไม่พบจุดวัด ${pointId}` }, 404);
+
+  const topic = meterTopics.config(updated.device_id, pointId);
+  const payload = JSON.stringify({ point_id: pointId, ...parsed.data });
+  const published = publish(topic, payload, { retain: true, qos: 1 });
+
+  return c.json({
+    point: updated,
+    ...(published ? {} : { warning: "บันทึกแล้วแต่ยังส่งให้ edge ไม่ได้ (MQTT ยังไม่พร้อม) — ลอง republish ภายหลัง" }),
+  });
 });
 
 /** แปลง "15m" / "6h" / "7d" เป็นวินาที ; คืน null ถ้ารูปแบบผิด */

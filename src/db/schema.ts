@@ -64,7 +64,8 @@ export const points = pgTable(
     min_value: doublePrecision("min_value"),
     max_value: doublePrecision("max_value"),
 
-    // ค่าสอบเทียบหน้าปัด (cx/cy/r/min_angle/... ตาม contract/points.ts)
+    // ค่าสอบเทียบหน้าปัด (โครงตาม pointFixtureSchema ใน contract/points.ts — จุดอ้างอิง
+    // เป็นเศษส่วน 0-1 ของภาพสำหรับ GAUGE, bbox เศษส่วนสำหรับ SEVEN_SEGMENT, ดู D-018)
     //
     // nullable โดยตั้งใจ: ingest จะสร้างแถวให้อัตโนมัติเมื่อเจอ point_id ที่ไม่รู้จัก
     // แล้วปล่อย fixture ว่างไว้ให้คนมาเติมทีหลัง — ดีกว่าทิ้งค่าที่อ่านมาได้แล้ว

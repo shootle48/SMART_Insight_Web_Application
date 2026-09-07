@@ -1,7 +1,9 @@
 // ผังหัวข้อ MQTT
 //
-//   <prefix>/<device_id>/<message_type>                          (ค่า/สถานะ — 3 ระดับ)
-//   <prefix>/<device_id>/evidence/<frame_id>/<point_id>/<kind>    (ภาพ — 6 ระดับ, T-011)
+//   <prefix>/<device_id>/<message_type>                          (ค่า/สถานะ — 3 ระดับ, edge→server)
+//   <prefix>/<device_id>/evidence/<frame_id>/<point_id>/<kind>    (ภาพ — 6 ระดับ, edge→server, T-011)
+//   <prefix>/<device_id>/command/snap-for-calibration             (สั่ง snap — 4 ระดับ, server→edge, T-013)
+//   <prefix>/<device_id>/config/<point_id>                        (ค่า calibrate — 4 ระดับ, server→edge, T-013)
 //
 // prefix ปรับผ่าน env เพราะทีม AI ยังไม่เคาะชื่อ — เปลี่ยนชื่อแล้วต้องไม่ต้องแก้โค้ด
 // device_id อยู่ทั้งใน topic และใน payload โดยตั้งใจ:
@@ -33,6 +35,18 @@ export const meterTopics = {
   /** subscribe เฉพาะภาพ — ต้องแยก subscription จาก all() เสมอ ห้ามรวมเป็น `meter/#`
    *  ไม่งั้นภาพจะไหลเข้า parseTopic() (คาด 3 ระดับ) แล้วพัง/ถูกนับเป็น invalid */
   evidenceAll: () => `${TOPIC_PREFIX}/+/evidence/+/+/+`,
+
+  // ── calibrate จากหน้า UI (D-017/D-018, T-013) ────────────────────────
+  // server เป็นฝั่ง publish ทั้งคู่ (edge sub) — คนละทิศกับ topic ข้างบนที่ server sub
+  // ไม่ต้องกังวลชนกับ meterTopics.all() (3 ระดับ) เพราะทั้งคู่มี 4 ระดับ
+
+  /** ขอภาพดิบสำหรับ calibrate — publish แบบ retain:false เท่านั้น (ดูเหตุผลใน
+   *  CALIBRATION-PROPOSAL.md หมวด "ทำไมไม่ใช้ Calibration mode/state") */
+  snapForCalibration: (deviceId: string) => `${TOPIC_PREFIX}/${deviceId}/command/snap-for-calibration`,
+
+  /** ค่า calibration ที่ยืนยันแล้ว — publish แบบ retain:true เสมอ (declarative,
+   *  edge reboot มา sub ได้ค่าล่าสุดทันที) ; payload ว่าง (0 ไบต์) = สั่งลบ config */
+  config: (deviceId: string, pointId: string) => `${TOPIC_PREFIX}/${deviceId}/config/${pointId}`,
 } as const;
 
 /** แกะ device_id กับ message_type ออกจาก topic (เฉพาะ 3 ระดับ — meter_frame/heartbeat/status)
