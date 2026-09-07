@@ -63,13 +63,15 @@ topic:   meter/<device_id>/command/snap-for-calibration
 retain:  false          ← สำคัญมาก ห้าม retain
 QoS:     1
 payload: {
-  "message_type": "snap_for_calibration",
   "point_id":   "pt-gauge-01",
   "kind":       "GAUGE",
   "request_id": "req-1725684123456-a3f9"   // UI สร้าง กัน race
 }
 ```
 
+- **ไม่มี `message_type`** — topic เองระบุประเภทข้อความอยู่แล้ว (`command/snap-for-calibration`)
+  ไม่เหมือน topic รวม `meter/+/+` เดิมที่ต้องพึ่ง `message_type` แยก meter_frame/device_status
+  ออกจากกัน (เคาะกับทีม AI แล้ว 2026-09-07)
 - **`retain: false` บังคับ** — ถ้าใครเผลอส่ง retained ตอน edge reboot จะเจอ command ค้าง
   แล้ว snap ทันทีทั้งที่ไม่มีใครขอ (potential loop)
 - **`request_id`** — กัน 2 UI ยิงพร้อมกัน edge ตอบทั้งสอง request ได้ (ใส่ใน filename metadata)
@@ -100,31 +102,46 @@ QoS:     1
 payload: pointFixtureSchema (discriminated union ตาม kind)
 ```
 
-ตัวอย่าง GAUGE:
+ตัวอย่าง GAUGE — **แก้ตามที่ทีม AI เสนอ 2026-09-07** (ดู D-018): จากโมเดลวงกลม+px เดิม
+เปลี่ยนเป็นจุดอ้างอิงหลายจุด (sample points) ตำแหน่งเป็นเศษส่วนของภาพเต็ม ไม่ใช่ pixel ตรงๆ
+กัน resolution กล้องไม่เท่ากันทำ config เดิมพัง:
+
 ```json
 {
-  "message_type": "point_config",
-  "point_id":  "pt-gauge-01",
-  "kind":      "GAUGE",
-  "cx":        320,
-  "cy":        240,
-  "r":         180,
-  "min_angle": -2.36,
-  "max_angle":  2.36
+  "point_id": "pt-gauge-01",
+  "kind": "GAUGE",
+  "calibration": [
+    { "x": 0.42, "y": 0.47, "value": 0 },
+    { "x": 0.51, "y": 0.32, "value": 5 },
+    { "x": 0.62, "y": 0.45, "value": 10 }
+  ]
 }
 ```
 
-ตัวอย่าง SEVEN_SEGMENT:
+- `x`, `y` = ตำแหน่งจุดอ้างอิงบนภาพ **เป็นเศษส่วน 0–1 ของขนาดภาพเต็ม** (ไม่ใช่ 0–100)
+  เช่น `x: 0.42` = 42% ของความกว้างภาพ
+- `value` = ค่าจริงของหน้าปัด ณ ตำแหน่งนั้น (หน่วยเดียวกับ `points.unit`)
+- **อย่างน้อย 2 จุด** — พอสำหรับ fit เส้นตรง ; ทีม AI ใส่ 3+ จุดได้ถ้าต้องการความแม่นยำสูงขึ้น
+  หรือรองรับหน้าปัดที่สเกลไม่เชิงเส้น (เราไม่ validate ว่าจุดที่ให้มา "สมเหตุสมผล" ทางเรขาคณิต
+  — เป็นหน้าที่โมเดล AI ตอนอ่านค่า)
+
+ตัวอย่าง SEVEN_SEGMENT — `bbox` เปลี่ยนเป็นเศษส่วนด้วยเหตุผลเดียวกัน (เจอปัญหา resolution
+แบบเดียวกับ GAUGE เป๊ะ ทีม AI ยืนยันแล้วว่าเอาด้วย):
+
 ```json
 {
-  "message_type": "point_config",
-  "point_id":  "pt-7segment-01",
-  "kind":      "SEVEN_SEGMENT",
-  "bbox":     { "x": 120, "y": 80, "w": 240, "h": 100 },
-  "decimals":  2
+  "point_id": "pt-7segment-01",
+  "kind": "SEVEN_SEGMENT",
+  "bbox": { "x": 0.15, "y": 0.20, "w": 0.30, "h": 0.12 },
+  "decimals": 2
 }
 ```
 
+- `x`, `y`, `w`, `h` เป็นเศษส่วน 0–1 ของขนาดภาพเต็ม (มุมบนซ้าย + กว้าง/สูง) ; ต้องมี
+  `x + w ≤ 1` และ `y + h ≤ 1` (กรอบไม่ล้นขอบภาพ) — ตรวจได้ทันทีตอน validate เพราะไม่ต้องรู้
+  ขนาดภาพจริง (ต่างจากตอนเป็น px ที่ตรวจไม่ได้จนกว่าจะรู้ resolution จริง)
+
+- **ไม่มี `message_type`** — เหตุผลเดียวกับ topic A (topic เจาะจงอยู่แล้ว)
 - **retained = true** — edge reboot แล้ว sub ได้ config ล่าสุดทันที ไม่ต้องถามใคร
 - **schema ตาม `pointFixtureSchema`** ที่มีอยู่ใน `src/contract/points.ts` — จะ export
   เป็นเอกสาร JSON schema แยกให้ฝ่าย edge อ่านง่าย

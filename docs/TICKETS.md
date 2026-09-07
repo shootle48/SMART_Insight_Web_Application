@@ -8,16 +8,18 @@
 
 ## T-014 [P2] UI canvas ให้แอดมินคลิกกำหนดจุด calibration บนภาพ — todo
 why:        ครึ่งหลังของ D-017 (calibrate จาก UI) — ครึ่งแรกคือ backend/broker plumbing (T-013)
-            ครึ่งนี้คือให้แอดมินคลิกกำหนด cx/cy/r/มุม (GAUGE) หรือลาก bbox (SEVEN_SEGMENT)
-            บนภาพจริง ; ตอนนี้ไม่มี UI ทำเรื่องนี้เลย
+            ครึ่งนี้คือให้แอดมินคลิกจุดอ้างอิงบนภาพแล้วพิมพ์ค่าจริง ณ จุดนั้น (GAUGE, ดู D-018)
+            หรือลาก bbox แบบเศษส่วน (SEVEN_SEGMENT) บนภาพจริง ; ตอนนี้ไม่มี UI ทำเรื่องนี้เลย
 scope:      component canvas ใหม่ในแผงรายละเอียด (`PointDetail.tsx`) — โหลดภาพจาก
             `/api/evidence/:pointId/latest` เป็น background · overlay SVG ที่คลิกกำหนดค่า
-            ตาม kind · ปุ่ม "ขอภาพใหม่" ยิง command ผ่าน server (ไม่ pub ตรงจาก browser
-            ห้ามให้ browser เขียน MQTT ตรง) · ปุ่ม Done ยิง `PATCH /api/points/:id/fixture`
+            ตาม kind (GAUGE: คลิกจุด + กรอกค่า ≥2 จุด, เก็บพิกัดเป็นเศษส่วน 0-1 ของขนาดภาพ
+            ที่ render ไม่ใช่ px จริง ; SEVEN_SEGMENT: ลาก bbox แล้วแปลงเป็นเศษส่วนก่อนส่ง) ·
+            ปุ่ม "ขอภาพใหม่" ยิง command ผ่าน server (ไม่ pub ตรงจาก browser ห้ามให้ browser
+            เขียน MQTT ตรง) · ปุ่ม Done ยิง `PATCH /api/points/:id/fixture`
             (extend endpoint ที่มีอยู่แล้ว)
-done-when:  แอดมินเปิดจุดใหม่ (ไม่มี fixture) → กด "ขอภาพ" → คลิก 3 จุดบน gauge (ศูนย์กลาง
-            + min + max) → กด Done → refresh หน้า edge อ่านค่าได้ถูก · **verify ด้วย point
-            จริงบน dev (mock edge)** ไม่ใช่แค่ mock canvas
+done-when:  แอดมินเปิดจุดใหม่ (ไม่มี fixture) → กด "ขอภาพ" → คลิก 3 จุดบน gauge (พิมพ์ค่าที่
+            รู้จริง เช่น 0/5/10) → กด Done → refresh หน้า edge อ่านค่าได้ถูก · **verify ด้วย
+            point จริงบน dev (mock edge)** ไม่ใช่แค่ mock canvas
 note:       ต้อง block ทำใบนี้จนกว่า T-013 (backend + edge integration) เสร็จก่อน — ไม่ใช้
             งานได้ถ้ายังไม่มี command topic + config publish · ⚠️ 3 kinds (GAUGE/7SEG/
             WATER_METER) คนละ shape กัน ต้อง discriminated union ตาม `pointFixtureSchema`

@@ -6,6 +6,18 @@
 
 ---
 
+## แก้ GAUGE calibration schema ตามฟีดแบ็กทีม AI: วงกลม(px) → จุดอ้างอิง(%)  🟢
+- ทีม AI ทักกลับหลังอ่าน `CALIBRATION-PROPOSAL.md` — px ผูกกับ resolution กล้อง เปลี่ยนกล้อง/
+  ความละเอียดแล้ว config เดิมใช้ไม่ได้เลย เสนอเปลี่ยนเป็นจุดอ้างอิง (x%, y%, value) แทน
+- คุยแล้วเคาะ 3 เรื่อง (D-018): ขั้นต่ำ 2 จุด · แก้ `bbox` ของ SEVEN_SEGMENT เป็นเศษส่วนด้วย
+  (ปัญหา resolution เดียวกัน) · ตัด `message_type` ออกจาก payload command/config ทั้งคู่
+  (topic path บอกประเภทอยู่แล้ว ไม่ต้องซ้ำ)
+- อัปเดต `docs/CALIBRATION-PROPOSAL.md` (topic A/C payload+ตัวอย่างใหม่ทั้งหมด) และ
+  `docs/TICKETS.md` T-014 (UI เปลี่ยนจาก "ลากรัศมี/มุม" เป็น "คลิกจุด+กรอกค่า")
+- ยังไม่มีโค้ดต้องแก้ (T-013/T-014 ยังไม่เริ่ม) — แก้แค่เอกสารตอนนี้
+
+---
+
 ## เขียน design + tickets สำหรับ calibrate จุดวัดจาก UI  🟢
 - แอดมินขอ feature ตั้ง fixture (cx/cy/r/มุม สำหรับ GAUGE ฯลฯ) จากหน้าเว็บ ให้ edge sub ไป
   apply — คุย pattern กันแล้ว (2026-09-07) เคาะเลือก command ephemeral + config retained
