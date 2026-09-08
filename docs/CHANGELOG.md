@@ -6,6 +6,31 @@
 
 ---
 
+## T-014: UI canvas สำหรับ calibrate จุดวัด GAUGE — เสร็จ 1/2 (GAUGE เท่านั้น)  🟡
+- ทีม AI implement edge sub เสร็จแล้ว (คุยกันในแชท 2026-09-07/08) T-013 ปลดบล็อกให้ทำ UI ต่อได้
+- ปุ่ม **"🎯 Calibrate"** ใน `PointDetail.tsx` — โชว์เฉพาะจุด `kind=GAUGE` (7-segment/water meter
+  ยังไม่ทำ fixture คนละรูปแบบ ดู note ใน T-014)
+- แผง calibrate: "ขอภาพใหม่" → publish command ผ่าน `request-calibration-snap` แล้ว **poll
+  จริง** เทียบ header `X-Frame-Id` กับ `request_id` (ไม่ใช่แค่เดาเวลา) timeout 10 วิ ; เริ่มด้วย
+  evidence ที่มีอยู่แล้วถ้ามี ไม่บังคับขอใหม่ทุกครั้ง (ตาม CALIBRATION-PROPOSAL.md)
+- คลิกบนภาพปักจุดอ้างอิง (เก็บเป็นเศษส่วน 0-1 ของขนาด render จริง ไม่ใช่ px ต้นทาง) กรอกค่าจริง
+  แต่ละจุด ≥2 จุด → "บันทึก Calibration" เรียก `PATCH .../fixture` ที่มีอยู่แล้ว (T-013)
+- pre-populate จุดเดิมจาก `point.fixture` ถ้าเคย calibrate ไว้แล้ว (แก้ไขต่อได้ ไม่ต้องเริ่มใหม่)
+- `evidence.ts` (server) — เพิ่ม header `X-Frame-Id` ให้ endpoint ภาพเดิม (ใช้ตรวจ poll เท่านั้น
+  ไม่กระทบ behavior เดิม)
+- `apiClient.ts` — เพิ่ม `fixture` เข้า `PointRow` type (backend ส่งมาอยู่แล้วแต่ type ไม่มี) +
+  `requestCalibrationSnap()` + `saveFixture()`
+- verify: `bun run type-check` ผ่านสะอาด ; ทดสอบ end-to-end จริงบน dev ด้วย `mosquitto_pub`
+  จำลอง edge ตอบกลับ evidence — ครบทุกเคส: ภาพโหลดสำเร็จ+จุดวาดตำแหน่งถูก, คลิกเพิ่มจุดได้,
+  ลบจุดจนเหลือ 1 จุดแล้วปุ่มบันทึก disable ถูกต้อง, กรอกค่าว่างแล้ว validate error ไม่ให้บันทึก,
+  บันทึกสำเร็จแล้ว DB+MQTT retained ตรงกันเป๊ะ ; `/api/health` ยืนยัน `ingest.invalid: 0`
+- 🔴 ระหว่างทดสอบเจอว่า **timeout 10 วิสั้นเกินสำหรับทดสอบมือด้วย `mosquitto_pub`** (คนละเรื่อง
+  กับ edge จริงที่ตอบเร็วกว่ามาก) ต้องปรับเป็น 60 วิชั่วคราวระหว่างทดสอบแล้วเปลี่ยนกลับ 10 วิ
+  ก่อน commit — ไม่ใช่บั๊ก แค่ทดสอบมือช้ากว่า edge จริงเยอะ
+- ยังไม่ทำ: 7-segment (bbox UI, ลากกรอบแทนคลิกจุด), water meter (ยังไม่มี fixture schema)
+
+---
+
 ## T-013 ช่วง 2/3: endpoint ขอภาพ calibrate + republish-config  🟡
 - ต่อจากช่วง 1/3 — เพิ่มอีก 2 endpoint ที่ scope ไว้ใน T-013
 - `POST /api/points/:id/request-calibration-snap` — publish command แบบ non-retained

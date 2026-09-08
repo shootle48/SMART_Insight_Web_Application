@@ -6,7 +6,7 @@
 
 # Active
 
-## T-014 [P2] UI canvas ให้แอดมินคลิกกำหนดจุด calibration บนภาพ — todo
+## T-014 [P2] UI canvas ให้แอดมินคลิกกำหนดจุด calibration บนภาพ — doing
 why:        ครึ่งหลังของ D-017 (calibrate จาก UI) — ครึ่งแรกคือ backend/broker plumbing (T-013)
             ครึ่งนี้คือให้แอดมินคลิกจุดอ้างอิงบนภาพแล้วพิมพ์ค่าจริง ณ จุดนั้น (GAUGE, ดู D-018)
             หรือลาก bbox แบบเศษส่วน (SEVEN_SEGMENT) บนภาพจริง ; ตอนนี้ไม่มี UI ทำเรื่องนี้เลย
@@ -25,6 +25,11 @@ note:       ต้อง block ทำใบนี้จนกว่า T-013 (ba
             WATER_METER) คนละ shape กัน ต้อง discriminated union ตาม `pointFixtureSchema`
             เริ่มจาก GAUGE ก่อน (ใช้เยอะสุด) แล้ว 7SEG · WATER_METER ยังไม่มี fixture schema
             (ดู D-016) เอาไว้ทีหลัง
+progress:   2026-09-08 GAUGE เสร็จแล้ว — ปุ่ม Calibrate + แผงคลิกปักจุด/กรอกค่า/บันทึก ครบ
+            วงจร ทดสอบผ่าน mosquitto_pub จำลอง edge ตอบกลับจริงบน dev (ภาพโหลด, จุดวาดตำแหน่ง
+            ถูก, validate <2 จุด/ค่าว่างถูกกัน, save แล้ว DB+MQTT retained ตรงกัน) ; ที่เหลือ:
+            SEVEN_SEGMENT (ลาก bbox แทนคลิกจุด — UI คนละแบบ ต้องทำแยก) · WATER_METER (รอ
+            fixture schema ก่อน) · ยังไม่ได้ deploy ขึ้น Pi ทดสอบกับ edge จริง
 
 ## T-013 [P2] backend + edge integration สำหรับ calibrate ผ่าน UI — doing
 why:        D-017 เคาะ pattern แล้ว ; ครึ่งแรกคือทำให้ browser สั่ง snap + publish config

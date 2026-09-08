@@ -422,6 +422,80 @@ body {
 }
 .d-cfg-actions button:disabled { opacity: 0.6; cursor: default; }
 
+/* แผง calibrate (T-014) — ใช้โครง .d-cfg เดิม เพิ่มส่วนภาพคลิกได้ + รายการจุด */
+.d-calib-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.d-calib-row button {
+  font-size: 18px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+.d-calib-row button:disabled { opacity: 0.6; cursor: default; }
+.d-calib-hint { font-size: 18px; color: var(--muted); }
+.d-calib-imgwrap { position: relative; display: inline-block; max-width: 100%; }
+.d-calib-img { display: block; max-width: 100%; border-radius: 8px; border: 1px solid var(--line); cursor: crosshair; }
+/* จุดปัก — ใช้ transform ดึงกึ่งกลางวงกลมมาทับตำแหน่งคลิกจริง ไม่ใช่มุมบนซ้าย */
+.d-calib-dot {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: var(--info);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  pointer-events: none;
+}
+.d-calib-list { display: flex; flex-direction: column; gap: 6px; }
+.d-calib-item { display: flex; align-items: center; gap: 10px; }
+.d-calib-num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--info);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.d-calib-pos { flex: none; font-family: var(--mono); font-size: 14px; color: var(--dim); width: 90px; }
+.d-calib-item input {
+  flex: 1;
+  font: inherit;
+  font-size: 18px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  min-width: 0;
+}
+.d-calib-rm {
+  flex: none;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.d-calib-rm:hover { color: var(--bad); border-color: var(--bad); }
+
 .d-now { display: flex; align-items: center; gap: 16px; margin: 16px 0 4px; }
 .d-big { font-family: var(--mono); font-size: 40px; font-weight: 600; line-height: 1; }
 .d-sub { font-size: 18px; color: var(--dim); margin-top: 7px; }

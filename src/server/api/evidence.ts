@@ -45,5 +45,9 @@ evidenceApi.get("/:pointId/latest", async (c) => {
   // no-store ไม่ใช่แค่กัน cache เก่า — URL นี้หน้าตาเดิมตลอดแต่เนื้อไฟล์เปลี่ยนได้ทุกครั้งที่
   // มีภาพใหม่เข้ามา ถ้าเบราว์เซอร์ cache ไว้จะเห็นภาพเก่าค้างไปเรื่อย ๆ โดยไม่รู้ตัว
   c.header("Cache-Control", "no-store");
+  // ให้ frontend เช็คได้ว่าภาพที่ได้ตรงกับ frame ที่รออยู่หรือยัง (T-014 — หลัง "ขอภาพ
+  // calibrate" ต้อง poll จนกว่าภาพที่ได้คือภาพที่เพิ่งขอ ไม่ใช่แค่ "มีภาพใหม่กว่าเดิม")
+  // ชื่อไฟล์ = frame_id เสมอ (ดู evidence.ts ฝั่ง ingest ตอนเซฟ) ตัด ".jpg" ออกตรง ๆ ได้เลย
+  c.header("X-Frame-Id", newest.name.replace(/\.jpg$/, ""));
   return c.body(bytes);
 });

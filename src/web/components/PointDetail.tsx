@@ -9,9 +9,27 @@
 // จอที่ควรบอกภาพรวมจะกลายเป็นจอที่บอกเรื่องเดียว
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchHistory, updatePointConfig, type HistoryBucket, type PointRow } from "../apiClient";
+import {
+  fetchHistory,
+  requestCalibrationSnap,
+  saveFixture,
+  updatePointConfig,
+  type CalibrationPoint,
+  type HistoryBucket,
+  type PointRow,
+} from "../apiClient";
 import { HistoryChart } from "./HistoryChart";
 import { ageLabel, formatValue, isStale } from "../time";
+
+/** จุดที่กำลังแก้ในฟอร์ม calibrate — value เป็น string ระหว่างพิมพ์ (เว้นว่างได้ชั่วคราว) */
+type EditableCalibPoint = { x: number; y: number; value: string };
+
+function calibPointsFromFixture(point: PointRow): EditableCalibPoint[] {
+  if (point.fixture?.kind === "GAUGE") {
+    return point.fixture.calibration.map((p) => ({ x: p.x, y: p.y, value: String(p.value) }));
+  }
+  return [];
+}
 
 /** ไม่มีใครแตะนานเท่านี้ → กลับหน้ารวมเอง */
 const AUTO_CLOSE_MS = 60_000;
@@ -52,6 +70,102 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
   // ไม่ได้ unmount ตอนกดการ์ดอื่นขณะแผงเปิดอยู่ (state เดิมจะค้างข้ามจุด)
   const [hasEvidence, setHasEvidence] = useState(true);
   useEffect(() => setHasEvidence(true), [point.point_id]);
+
+  // แผง calibrate (T-014) — เฉพาะ GAUGE ตามที่ ticket กำหนดไว้ก่อน (7-segment/water meter
+  // ทำทีหลัง เพราะ fixture คนละรูปแบบ ต้องมี UI ต่างกัน)
+  //
+  // เริ่มด้วยภาพ evidence ที่มีอยู่แล้ว (ถ้ามี) ไม่บังคับขอภาพใหม่ทุกครั้ง — จุดที่ตั้งค่า
+  // แล้วอยากแก้เล็กน้อยไม่จำเป็นต้องรอ edge snap ใหม่ (ดู CALIBRATION-PROPOSAL.md)
+  const [calibrating, setCalibrating] = useState(false);
+  const [calibPoints, setCalibPoints] = useState<EditableCalibPoint[]>([]);
+  const [calibImgFrameId, setCalibImgFrameId] = useState<string | null>(null);
+  const [snapStatus, setSnapStatus] = useState<"idle" | "waiting" | "error">("idle");
+  const [snapError, setSnapError] = useState<string | null>(null);
+  const [calibSaving, setCalibSaving] = useState(false);
+  const [calibSaveError, setCalibSaveError] = useState<string | null>(null);
+  const pollCancelRef = useRef(0);
+
+  useEffect(() => {
+    setCalibrating(false);
+    setCalibPoints(calibPointsFromFixture(point));
+    setCalibImgFrameId(point.frame_id ?? null);
+    setSnapStatus("idle");
+    setSnapError(null);
+    setCalibSaveError(null);
+    pollCancelRef.current += 1; // ยกเลิก poll ค้างจากจุดก่อนหน้า (ดู requestNewSnap)
+  }, [point.point_id]);
+
+  const requestNewSnap = useCallback(async () => {
+    const myToken = ++pollCancelRef.current;
+    setSnapStatus("waiting");
+    setSnapError(null);
+    try {
+      const { request_id } = await requestCalibrationSnap(point.point_id);
+      const deadlineAt = Date.now() + 10_000;
+      // Poll endpoint ภาพเดิม เทียบ header X-Frame-Id กับ request_id ที่เพิ่งขอ — รู้แน่ชัด
+      // ว่า "ภาพที่ได้คือภาพที่เพิ่งขอ" ไม่ใช่แค่เดาว่ารอนานพอหรือยัง (ดู evidence.ts header)
+      const poll = async () => {
+        if (myToken !== pollCancelRef.current) return; // ถูกยกเลิก (สลับจุด/ขอใหม่ซ้อน)
+        if (Date.now() > deadlineAt) {
+          setSnapStatus("error");
+          setSnapError("รอภาพนานเกินไป (>10 วิ) — เครื่องอาจออฟไลน์หรือ edge ยังไม่รองรับคำสั่งนี้");
+          return;
+        }
+        try {
+          const res = await fetch(`/api/evidence/${encodeURIComponent(point.point_id)}/latest`, {
+            cache: "no-store",
+          });
+          const frameId = res.headers.get("X-Frame-Id");
+          if (res.ok && frameId === request_id) {
+            setCalibImgFrameId(frameId);
+            setSnapStatus("idle");
+            return;
+          }
+        } catch {
+          // เครือข่ายสะดุดชั่วคราว ไม่ถือเป็น error ทันที ลองรอบถัดไป
+        }
+        setTimeout(poll, 1_000);
+      };
+      void poll();
+    } catch (e) {
+      setSnapStatus("error");
+      setSnapError(e instanceof Error ? e.message : String(e));
+    }
+  }, [point.point_id]);
+
+  const addCalibPoint = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const y = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+    setCalibPoints((pts) => [...pts, { x, y, value: "" }]);
+  }, []);
+
+  const saveCalibration = useCallback(async () => {
+    if (calibPoints.length < 2) {
+      setCalibSaveError("ต้องมีจุดอ้างอิงอย่างน้อย 2 จุด");
+      return;
+    }
+    const parsed: CalibrationPoint[] = [];
+    for (const p of calibPoints) {
+      const value = Number(p.value.trim());
+      if (p.value.trim() === "" || Number.isNaN(value)) {
+        setCalibSaveError("ทุกจุดต้องกรอกค่าจริงเป็นตัวเลข");
+        return;
+      }
+      parsed.push({ x: p.x, y: p.y, value });
+    }
+    setCalibSaving(true);
+    setCalibSaveError(null);
+    try {
+      const updated = await saveFixture(point.point_id, { kind: "GAUGE", calibration: parsed });
+      onConfigSaved(updated);
+      setCalibrating(false);
+    } catch (e) {
+      setCalibSaveError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCalibSaving(false);
+    }
+  }, [calibPoints, point.point_id, onConfigSaved]);
 
   // ฟอร์มตั้งค่าจุด (label/หน่วย/สเกล) — ปิดไว้เป็นค่าเริ่มต้น เปิดเมื่อกดปุ่ม ⚙ ตั้งค่า
   // เหตุผลเดียวกับ hasEvidence ข้างบน: ต้อง reset ทุกครั้งที่สลับจุด เพราะ component ไม่
@@ -189,6 +303,17 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
           >
             ⚙ ตั้งค่า
           </button>
+          {/* Calibrate เฉพาะ GAUGE ก่อน (T-014) — 7-segment/water meter fixture คนละรูปแบบ
+              ยังไม่มี UI รองรับ (bbox แทนจุดอ้างอิง) */}
+          {point.kind === "GAUGE" && (
+            <button
+              className="d-cfg-btn"
+              onClick={() => setCalibrating((v) => !v)}
+              aria-expanded={calibrating}
+            >
+              🎯 Calibrate
+            </button>
+          )}
           <span className="d-auto" title="จอผนังไม่มีใครเดินไปกดปิด จึงกลับหน้ารวมเอง">
             ↩ กลับหน้ารวมใน {remaining} วิ
           </span>
@@ -251,6 +376,93 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
             </button>
           </div>
         </form>
+      )}
+
+      {calibrating && (
+        <div className="d-cfg d-calib">
+          <div className="d-calib-row">
+            <button type="button" onClick={requestNewSnap} disabled={snapStatus === "waiting"}>
+              {snapStatus === "waiting" ? "กำลังรอภาพ..." : "📷 ขอภาพใหม่สำหรับ calibrate"}
+            </button>
+            {calibPoints.length > 0 && (
+              <button type="button" onClick={() => setCalibPoints([])} disabled={snapStatus === "waiting"}>
+                ล้างจุดทั้งหมด
+              </button>
+            )}
+          </div>
+          {snapStatus === "error" && <div className="d-err">{snapError}</div>}
+
+          {calibImgFrameId ? (
+            <>
+              <div className="d-calib-hint">คลิกบนภาพเพื่อปักจุดอ้างอิง (อย่างน้อย 2 จุด) แล้วกรอกค่าจริง ณ จุดนั้น</div>
+              <div className="d-calib-imgwrap">
+                <img
+                  className="d-calib-img"
+                  src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest?f=${encodeURIComponent(calibImgFrameId)}`}
+                  alt="ภาพสำหรับ calibrate"
+                  onClick={addCalibPoint}
+                  onError={() => setCalibImgFrameId(null)}
+                />
+                {calibPoints.map((p, i) => (
+                  <div
+                    key={i}
+                    className="d-calib-dot"
+                    style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="d-snap">📷 ยังไม่มีภาพให้ calibrate — กด "ขอภาพใหม่" ก่อน</div>
+          )}
+
+          {calibPoints.length > 0 && (
+            <div className="d-calib-list">
+              {calibPoints.map((p, i) => (
+                <div className="d-calib-item" key={i}>
+                  <span className="d-calib-num">{i + 1}</span>
+                  <span className="d-calib-pos">
+                    x={(p.x * 100).toFixed(0)}% y={(p.y * 100).toFixed(0)}%
+                  </span>
+                  <input
+                    type="number"
+                    step="any"
+                    value={p.value}
+                    placeholder="ค่าจริง"
+                    onChange={(e) =>
+                      setCalibPoints((pts) => pts.map((q, j) => (j === i ? { ...q, value: e.target.value } : q)))
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="d-calib-rm"
+                    onClick={() => setCalibPoints((pts) => pts.filter((_, j) => j !== i))}
+                    aria-label={`ลบจุดที่ ${i + 1}`}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {calibSaveError && <div className="d-err">{calibSaveError}</div>}
+          <div className="d-cfg-actions">
+            <button
+              type="button"
+              className="d-cfg-save"
+              onClick={saveCalibration}
+              disabled={calibSaving || calibPoints.length < 2}
+            >
+              {calibSaving ? "กำลังบันทึก..." : "บันทึก Calibration"}
+            </button>
+            <button type="button" onClick={() => setCalibrating(false)} disabled={calibSaving}>
+              ยกเลิก
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="d-now">

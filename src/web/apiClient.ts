@@ -5,6 +5,16 @@
 
 export type Quality = "OK" | "UNCERTAIN" | "UNREADABLE";
 
+/** จุดอ้างอิงหนึ่งจุดบนภาพ — x,y เป็นเศษส่วน 0-1 ของภาพเต็ม (D-018) */
+export type CalibrationPoint = { x: number; y: number; value: number };
+
+/** โครงเดียวกับ pointFixtureSchema ฝั่ง server (contract/points.ts) — นิยามซ้ำตั้งใจ
+ *  เหมือน type อื่นในไฟล์นี้ทั้งหมด ไม่ import จาก contract ตรง ๆ กันลาก dependency ฝั่ง
+ *  server เข้า bundle เว็บ */
+export type PointFixture =
+  | { kind: "GAUGE"; calibration: CalibrationPoint[] }
+  | { kind: "SEVEN_SEGMENT"; bbox: { x: number; y: number; w: number; h: number }; decimals: number };
+
 export type PointRow = {
   point_id: string;
   device_id: string;
@@ -15,6 +25,7 @@ export type PointRow = {
   enabled: boolean;
   min_value: number | null;
   max_value: number | null;
+  fixture: PointFixture | null;
   device_status: "ONLINE" | "OFFLINE";
 
   // เป็น null ได้เมื่อจุดนี้ยังไม่เคยมีค่าเลย (เพิ่งถูกสร้าง หรือกล้องเสียตั้งแต่แรก)
@@ -102,6 +113,33 @@ export async function updatePointConfig(pointId: string, config: PointConfigInpu
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(config),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error((body as { error?: string } | null)?.error ?? `HTTP ${res.status}`);
+  }
+  return ((await res.json()) as { point: PointRow }).point;
+}
+
+/** ขอให้ edge snap ภาพดิบสำหรับ calibrate (T-013/T-014) — คืน request_id ให้ไป poll
+ *  หาภาพที่ตรงกันทาง /api/evidence/:pointId/latest (header X-Frame-Id) */
+export async function requestCalibrationSnap(pointId: string): Promise<{ request_id: string }> {
+  const res = await fetch(`/api/points/${encodeURIComponent(pointId)}/request-calibration-snap`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error((body as { error?: string } | null)?.error ?? `HTTP ${res.status}`);
+  }
+  return (await res.json()) as { request_id: string };
+}
+
+/** บันทึก fixture (ค่า calibration) — สำเร็จแล้ว server publish retained config ไป edge เอง */
+export async function saveFixture(pointId: string, fixture: PointFixture): Promise<PointRow> {
+  const res = await fetch(`/api/points/${encodeURIComponent(pointId)}/fixture`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fixture),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
