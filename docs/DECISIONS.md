@@ -3,6 +3,43 @@
 <!-- จดทุกครั้งที่เคาะเรื่องที่ "มีทางเลือกแล้วเลือกทางหนึ่ง" — กันถกซ้ำ/ลืมเหตุผล
      1 เรื่อง = 5-8 บรรทัด พอ. ถ้าการตัดสินใจถูกล้ม → เพิ่มรายการใหม่อ้างของเก่า (ไม่ลบ) -->
 
+## D-019 รื้อ UI เป็น "dark shell + warm light workspace" (แทน High-Visibility Industrial)  (2026-09-08)
+เลือก:      รื้อชั้นภาพทั้งหมดตาม design doc ที่ผู้ใช้ให้ (`Evreghen Command Center`) + ภาพ
+            reference จริง — โครงหลัก 5 ข้อ: (1) shell มืดคาดบนครอบ workspace สว่าง
+            (2) การ์ดไม่มีขอบ/เงา แยกด้วยความต่างของสีพื้น (--bg vs --surface)
+            (3) สถานะ = rail เส้นบน 2px + tag เล็ก 10.5px แทน banner หนา + ขอบสี 4px ทั้งใบ
+            (4) uppercase micro-label เฉพาะ field label + status tag เท่านั้น
+            (5) ไม่มี emoji — SVG ใน `components/Icons.tsx`
+            radius ลดทั้ง scale (การ์ด 12px → 3px) ตามที่ผู้ใช้ขอให้เหลี่ยม
+แทนที่จะ:   ค่อย ๆ แปะ design token ทับโครงเดิม (ลองไปแล้ว 2 รอบ ผู้ใช้ตีกลับว่า "AI slop")
+เพราะ:      1) การแปะ token ทับของเดิมไม่เคยแก้ต้นเหตุ — ปัญหาอยู่ที่ **โครง** ไม่ใช่สี:
+               หน้า detail ยัดทุกอย่างน้ำหนักเท่ากันหมด (ปุ่ม 4 อัน + chip + กราฟ + quality bar
+               + stats grid 2×2) ไม่มีลำดับว่าอะไรสำคัญกว่า
+            2) สิ่งที่ทำให้ reference ดูสะอาดคือ "การ์ดเป็นบล็อกสี ไม่ใช่กล่องมีกรอบ" —
+               border+shadow+radius ซ้อนกันคือสิ่งที่ทำให้ดูเป็น SaaS template
+            3) uppercase tracked ที่สาดทั่วทุก id/label รอบก่อน = giveaway ชัดที่สุดของ
+               admin template สำเร็จรูป ; ของจริงใช้เฉพาะ field label กับ status badge
+            4) emoji เรนเดอร์ด้วยฟอนต์ระบบ คุมสี/ขนาด/น้ำหนักไม่ได้เลย และหน้าตาต่างกัน
+               ระหว่าง Pi OS กับ Windows — ทำให้ UI ดูเป็น prototype
+scope:      `web/styles.css` (รื้อชั้นภาพเกือบทั้งไฟล์ + ลบ dead CSS ~50 บรรทัด) ·
+            `components/Icons.tsx` (ใหม่) · `App.tsx` (shell + page-head + สรุปจุดปกติ) ·
+            `PointCard.tsx` (metric-card + rail + tag) · `DeviceBar.tsx` (metric strip) ·
+            `PointDetail.tsx` (icon-only chrome แทน emoji)
+trade-off:  - **ไม่ทำ sidebar ตาม reference** ทั้งที่ design doc มี — แอปนี้มีหน้าเดียว
+               เมนูที่กดไม่ได้คือของปลอมที่ยิ่งทำให้ดูเป็น mockup ; เอาเฉพาะแถบบนที่มีของจริง
+            - **ไม่ใช้ backdrop-filter** ที่ doc ขอ (frosted glass 12px) — Pi 5 รันไม่ไหว
+               (D-011) ใช้สีทึบที่ composite แล้วได้โทนเดียวกันแทน เสียแค่ความ frosted
+               ที่มองไม่ออกอยู่แล้วบนพื้นหลังนิ่ง
+            - **สีพื้นไม่ตรง doc เป๊ะ**: doc ให้ background ครีมอุ่น (#fcfaf7) คู่กับ surface
+               เทาอมฟ้า (#f3f4f6) ซึ่งขัดกันเอง วางติดกันแล้วดูขุ่น → จูนใหม่ให้อยู่ hue
+               เดียวกัน (#faf8f5 / #f1eeea)
+            - **สีสถานะไม่ตรง doc**: #00c758/#fb2c36/#edb200/#3080ff ตกเกณฑ์ AA ทั้งหมด
+               เมื่อเป็น text บนพื้นสว่าง → ใช้คู่ status-*-fg ของ doc เองแทน
+            - ตัวเลขค่าเล็กลงจาก 48px เหลือ 40px (46px บนจอ ≥1600px) — ยังอ่านจากไกลได้
+               เพราะพื้นการ์ดเรียบไม่มีอะไรแย่ง แต่ถ้าหน้างานจริงบอกว่าเล็กไปต้องขยับกลับ
+ทบทวนเมื่อ: ได้ feedback จากคนใช้จริงหน้างาน (ระยะยืนดูจริง) หรือถ้าวันหนึ่งแอปมีหลายหน้า
+            จนต้องมี navigation จริง ค่อยพิจารณา sidebar ตาม doc
+
 ## D-018 GAUGE calibration เปลี่ยนจากวงกลม(px) เป็นจุดอ้างอิง(%) + ตัด message_type  (2026-09-07)
 เลือก:      `gaugeFixtureSchema` เปลี่ยนจาก `{cx,cy,r,min_angle,max_angle}` (pixel, สมมติ
             มุม→ค่าเป็นเชิงเส้นเสมอ) เป็น `{calibration: [{x,y,value}, ...]}` อย่างน้อย 2 จุด

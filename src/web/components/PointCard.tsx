@@ -89,27 +89,22 @@ export function PointCard({ point, now, onOpen, selected }: Props) {
           }
         : {})}
     >
-      {bannerText && <div className="banner">{bannerText}</div>}
+      {/* แถบสถานะ = เส้นบางเต็มความกว้างด้านบน แทน banner ตัวหนังสือหนาแบบเดิม
+          สีเดียวสื่อสถานะได้จากไกลอยู่แล้ว ส่วนคำอธิบายไปอยู่เป็น badge เล็กในเนื้อการ์ด
+          (banner หนาเดิมกินพื้นที่และทำให้ทุกใบตะโกนแข่งกันจนไม่มีอะไรเด่นจริง) */}
+      <span className="card-rail" aria-hidden="true" />
 
       <div className="card-inner">
         <header className="card-head">
-          <h2>{point.label ?? point.point_id}</h2>
-          <span className="card-id">{point.point_id}</span>
+          <div className="card-head-text">
+            <h2>{point.label ?? point.point_id}</h2>
+            <span className="card-id">{point.point_id}</span>
+          </div>
+          {bannerText && <span className={`tag tag-${state}`}>{bannerText}</span>}
+          {!bannerText && point.enabled === false && <span className="tag tag-new">ยังไม่ตั้งค่า</span>}
         </header>
 
         <div className="card-body">
-          {hasEvidence && (
-            <img
-              className="card-thumb"
-              // ผูก query string เข้ากับ frame_id — URL เดิมทุกครั้งเบราว์เซอร์จะไม่ยิงคำขอใหม่ให้เอง
-              // แม้ไฟล์บนเซิร์ฟเวอร์เปลี่ยนไปแล้ว (ต่างจากตัวเลขที่ผ่าน React state ให้เอง)
-              // frame_id เปลี่ยนทุกครั้งที่ SSE ส่งค่าใหม่เข้ามาพอดี ไม่ต้อง poll เพิ่มเอง
-              src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest${point.frame_id ? `?f=${encodeURIComponent(point.frame_id)}` : ""}`}
-              alt=""
-              onError={() => setHasEvidence(false)}
-            />
-          )}
-
           <div className="card-value">
             {never ? (
               <span className="v-none">ยังไม่มีค่า</span>
@@ -126,13 +121,25 @@ export function PointCard({ point, now, onOpen, selected }: Props) {
               <span className="v-text">{point.value_text}</span>
             )}
           </div>
+
+          {hasEvidence && (
+            <img
+              className="card-thumb"
+              // ผูก query string เข้ากับ frame_id — URL เดิมทุกครั้งเบราว์เซอร์จะไม่ยิงคำขอใหม่ให้เอง
+              // แม้ไฟล์บนเซิร์ฟเวอร์เปลี่ยนไปแล้ว (ต่างจากตัวเลขที่ผ่าน React state ให้เอง)
+              // frame_id เปลี่ยนทุกครั้งที่ SSE ส่งค่าใหม่เข้ามาพอดี ไม่ต้อง poll เพิ่มเอง
+              src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest${point.frame_id ? `?f=${encodeURIComponent(point.frame_id)}` : ""}`}
+              alt=""
+              onError={() => setHasEvidence(false)}
+            />
+          )}
         </div>
 
         {confPct !== null && (
           <div className="conf">
             <div className="conf-row">
-              <span>ความมั่นใจ</span>
-              <span>{confPct}%</span>
+              <span className="conf-label">ความมั่นใจ</span>
+              <span className="conf-pct">{confPct}%</span>
             </div>
             <div className="conf-track">
               <i
@@ -153,20 +160,13 @@ export function PointCard({ point, now, onOpen, selected }: Props) {
         )}
 
         <footer className="card-foot">
-          {/* badge สถานะคุณภาพ (ออฟไลน์/ค่าเก่า/ไม่มั่นใจ/เกินสเกล) ย้ายไปขึ้น banner ด้านบนแล้ว
-              เหลือ "ยังไม่ตั้งค่า" ไว้เพราะเป็นคนละแกน (สถานะ config ไม่ใช่คุณภาพข้อมูล)
-              ยังต้องมีที่ทางของมันแม้การ์ดจะดู "ok" อยู่ก็ตาม */}
-          <span className="badges">{point.enabled === false && <b className="badge b-new">ยังไม่ตั้งค่า</b>}</span>
-          <span className="card-age">
-            {ageLabel(point.captured_at, now)}
-            {hasScale && (
-              <span className="card-range">
-                {" · "}
-                {point.min_value}–{point.max_value}
-                {point.unit ? ` ${point.unit}` : ""}
-              </span>
-            )}
-          </span>
+          <span className="card-age">{ageLabel(point.captured_at, now)}</span>
+          {hasScale && (
+            <span className="card-range">
+              {point.min_value}–{point.max_value}
+              {point.unit ? ` ${point.unit}` : ""}
+            </span>
+          )}
         </footer>
       </div>
     </article>

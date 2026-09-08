@@ -16,11 +16,11 @@ export function DeviceBar({ devices, now }: { devices: DeviceRow[]; now: number 
 
         return (
           <div key={d.device_id} className={`dev ${offline ? "dev-offline" : quiet ? "dev-quiet" : "dev-ok"}`}>
-            <div className="dev-top">
+            <div className="dev-label">
               <span className="dev-dot" />
-              <span className="dev-name">{d.label ?? d.device_id}</span>
-              <span className="dev-id">{d.device_id}</span>
+              {d.device_id}
             </div>
+            <div className="dev-name">{d.label ?? d.device_id}</div>
             <div className="dev-meta">
               {offline ? (
                 <strong>ออฟไลน์</strong>

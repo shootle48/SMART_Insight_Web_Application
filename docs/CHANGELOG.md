@@ -6,6 +6,32 @@
 
 ---
 
+## รื้อ UI ทั้งชั้นภาพ: dark shell + warm light workspace  🟡
+- ผู้ใช้ส่ง design doc (`Evreghen Command Center`) + ภาพ reference มาให้ แล้วตีกลับ 2 รอบ
+  ว่ายัง "AI slop" — รอบแรกแปะ palette อย่างเดียว (เปลี่ยนน้อยไป) รอบสองสาด uppercase
+  tracked ทั่วทุก label (ยิ่งดูเป็น admin template) → รอบนี้รื้อโครงจริงตาม D-019
+- **Shell มืดคาดบน** (`.shell`, sticky z-20) ครอบ workspace สว่าง — brand mark ส้ม +
+  สถานะเชื่อมต่อ + theme toggle เป็น icon ; **ไม่ทำ sidebar** ทั้งที่ reference มี เพราะ
+  แอปนี้มีหน้าเดียว เมนูที่กดไม่ได้คือของปลอม
+- **การ์ด = metric card**: พื้น `--surface` เรียบ ไม่มีขอบ ไม่มีเงา แยกจากพื้นด้วยสีพื้น
+  ล้วน ๆ ; สถานะเป็น rail เส้นบน 2px + tag 10.5px แทน banner ตัวหนังสือหนา + ขอบสี 4px
+- **ไม่มี emoji แล้วทั้งแอป** — `components/Icons.tsx` (ใหม่) เป็น SVG stroke ที่ใช้
+  `currentColor` คุมสี/ขนาดตามธีมได้เหมือน text
+- **uppercase micro-label ใช้ถูกที่**: เฉพาะ field label (`EDGE-01`, `ความมั่นใจ`) กับ
+  status tag ; `pt-a-boiler-pressure` และชื่อจุดกลับเป็น mono/sans เงียบ ๆ
+- **radius เหลี่ยมขึ้นตามที่ผู้ใช้ขอ** — การ์ด 12px → 3px, input/ปุ่ม 8px → 4px
+- **พื้นหลังจูนใหม่**: doc ให้ครีมอุ่น (#fcfaf7) คู่กับเทาอมฟ้า (#f3f4f6) ซึ่งขัดกันเอง
+  ดูขุ่น → เปลี่ยนเป็น hue เดียวกัน (#faf8f5 / #f1eeea)
+- **แผง point detail** เลิกใช้ขาวจ้า → พื้นเดียวกับ workspace + แบ่งโครงด้วยบล็อก surface
+  (hero / timeline / ฟอร์ม) ; แก้บั๊กแผงมุดใต้ shell (เพิ่ม `top: 64px`)
+- ลบ dead CSS ~50 บรรทัด (`.banner`, `.badge`, `.chip`, `.qbar`, `.d-grid`, `.d-box`,
+  `.topbar`, ฯลฯ) ที่ไม่มีใครอ้างแล้วหลังรื้อ — เช็คด้วยการ grep ทุก class ใน tsx ก่อนลบ
+- verify: `bun run type-check` ผ่านสะอาด ; เปิดเบราว์เซอร์จริงตรวจครบ — หน้ารวม, แผง
+  รายละเอียด, ฟอร์มตั้งค่า, แผง calibrate, ทั้งธีมสว่างและมืด ; ยืนยัน aria-expanded ของ
+  ปุ่ม icon ถูกต้องด้วย DevTools
+
+---
+
 ## fix(T-014): จุด calibrate ที่ปักไม่ตรงกับตำแหน่งเมาส์ (เลื่อนไปทางขวา)  🟢
 - ผู้ใช้แจ้งว่าคลิกบนภาพแล้วจุดขึ้นไม่ตรงกับ cursor เลื่อนไปทางขวา ~100px+
 - สาเหตุ: `.d-calib-imgwrap` (inline-block) อยู่ใน `.d-cfg` ซึ่งเป็น flex column ที่

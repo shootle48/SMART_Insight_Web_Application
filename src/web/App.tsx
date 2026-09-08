@@ -5,6 +5,7 @@ import { useLiveData } from "./useLiveData";
 import { DeviceBar } from "./components/DeviceBar";
 import { PointCard } from "./components/PointCard";
 import { PointDetail } from "./components/PointDetail";
+import { IconMoon, IconSun } from "./components/Icons";
 
 /** อ่านค่าที่จำไว้ตอนเปิดหน้าครั้งแรก — ต้องตรงกับ script ใน index.html เป๊ะ
  * (ไฟล์นั้นตั้ง attribute ให้ก่อน React mount กันจอกระพริบ ที่นี่แค่ต้องรู้ค่าเดียวกัน
@@ -48,6 +49,11 @@ export function App() {
     ? devices.map((d) => ({ device: d, points: points.filter((p) => p.device_id === d.device_id) }))
     : [{ device: null, points }];
 
+  const totalPoints = points.length;
+  const abnormal = points.filter(
+    (p) => p.quality === "UNREADABLE" || p.quality === "UNCERTAIN" || p.device_status !== "ONLINE",
+  ).length;
+
   return (
     <>
       {/* พื้นหลังเรืองแสง — static ทั้งหมด เบราว์เซอร์ raster ครั้งเดียวแล้วจบ */}
@@ -56,36 +62,62 @@ export function App() {
         <div className="blob blob-2" />
       </div>
 
+      {/* Shell มืดคาดบนสุด — กรอบ chrome ที่ครอบ workspace สว่าง (แนวคิดหลักของ design doc)
+          ไม่ทำ sidebar เพราะแอปนี้เป็นจอเดียว ไม่มีหน้าอื่นให้ไป การใส่เมนูหลอกที่กดไม่ได้
+          คือของปลอมที่ไม่ควรมี — เอาเฉพาะแถบบนที่มีของจริงให้ใช้ */}
+      <div className="shell">
+        <div className="shell-inner">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true">M</span>
+            <span className="brand-text">
+              <span className="brand-name">METER</span>
+              <span className="brand-sub">CONTROL PANEL MONITOR</span>
+            </span>
+          </div>
+
+          <div className="shell-right">
+            <div className={`conn conn-${conn}`}>
+              <span className="conn-dot" />
+              {conn === "live" ? "เชื่อมต่ออยู่" : conn === "connecting" ? "กำลังเชื่อมต่อ" : "สายหลุด"}
+            </div>
+            <div className="theme-toggle" role="group" aria-label="สลับธีม">
+              <button
+                type="button"
+                className={theme === "light" ? "on" : ""}
+                onClick={() => setTheme("light")}
+                aria-pressed={theme === "light"}
+                aria-label="ธีมสว่าง"
+                title="ธีมสว่าง"
+              >
+                <IconSun />
+              </button>
+              <button
+                type="button"
+                className={theme === "dark" ? "on" : ""}
+                onClick={() => setTheme("dark")}
+                aria-pressed={theme === "dark"}
+                aria-label="ธีมมืด"
+                title="ธีมมืด"
+              >
+                <IconMoon />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className={`app${selected ? " app-detail" : ""}`}>
-      <header className="topbar">
+      <header className="page-head">
         <div>
-          <h1>Meter</h1>
-          <p className="sub">ค่าหน้าปัดจากตู้ควบคุม · อัปเดตสด</p>
+          <h1>ภาพรวมจุดวัด</h1>
+          <p className="page-sub">ค่าหน้าปัดจากตู้ควบคุมในโรงงาน · อัปเดตสดผ่าน MQTT</p>
         </div>
-        <div className="topbar-right">
-          <div className="theme-toggle" role="group" aria-label="สลับธีม">
-            <button
-              type="button"
-              className={theme === "light" ? "on" : ""}
-              onClick={() => setTheme("light")}
-              aria-pressed={theme === "light"}
-            >
-              สว่าง
-            </button>
-            <button
-              type="button"
-              className={theme === "dark" ? "on" : ""}
-              onClick={() => setTheme("dark")}
-              aria-pressed={theme === "dark"}
-            >
-              มืด
-            </button>
+        {totalPoints > 0 && (
+          <div className="page-stat">
+            <span className="page-stat-num">{totalPoints - abnormal}<span className="page-stat-of">/{totalPoints}</span></span>
+            <span className="page-stat-label">จุดปกติ</span>
           </div>
-          <div className={`conn conn-${conn}`}>
-            <span className="conn-dot" />
-            {conn === "live" ? "เชื่อมต่ออยู่" : conn === "connecting" ? "กำลังเชื่อมต่อ" : "สายหลุด — กำลังต่อใหม่"}
-          </div>
-        </div>
+        )}
       </header>
 
       {error && (

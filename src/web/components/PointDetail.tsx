@@ -19,6 +19,7 @@ import {
   type PointRow,
 } from "../apiClient";
 import { HistoryChart } from "./HistoryChart";
+import { IconCamera, IconClose, IconSettings, IconTarget } from "./Icons";
 import { ageLabel, formatValue, isStale } from "../time";
 
 /** จุดที่กำลังแก้ในฟอร์ม calibrate — value เป็น string ระหว่างพิมพ์ (เว้นว่างได้ชั่วคราว) */
@@ -288,37 +289,40 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
   return (
     <aside className="detail" onPointerDown={touch} onPointerMove={touch} onWheel={touch}>
       <header className="d-head">
-        <div>
+        <div className="d-head-title">
           <h2>{point.label ?? point.point_id}</h2>
           <div className="d-id">
-            {point.point_id} · {point.device_id}
-            {point.enabled === false && <span className="d-unconfigured"> · ยังไม่ตั้งค่า</span>}
+            <span className="d-id-mono">{point.point_id}</span>
+            <span className="d-id-sep">·</span>
+            <span className="d-id-mono">{point.device_id}</span>
+            {point.enabled === false && <span className="d-unconfigured">ยังไม่ตั้งค่า</span>}
           </div>
         </div>
+        {/* chrome เดิม 4 อันแข่งกันเอง (ปุ่มข้อความ 2 + pill นับถอยหลัง + ปิด) —
+            ตัดเหลือ icon 3 อัน ; countdown ย้ายไปอยู่บรรทัด meta ท้ายแผงแบบเงียบ ๆ */}
         <div className="d-actions">
           <button
-            className="d-cfg-btn"
+            className="d-icon-btn"
             onClick={() => setEditingConfig((v) => !v)}
             aria-expanded={editingConfig}
+            aria-label="ตั้งค่าจุดวัด"
+            title="ตั้งค่า label/หน่วย/สเกล"
           >
-            ⚙ ตั้งค่า
+            <IconSettings />
           </button>
-          {/* Calibrate เฉพาะ GAUGE ก่อน (T-014) — 7-segment/water meter fixture คนละรูปแบบ
-              ยังไม่มี UI รองรับ (bbox แทนจุดอ้างอิง) */}
           {point.kind === "GAUGE" && (
             <button
-              className="d-cfg-btn"
+              className="d-icon-btn"
               onClick={() => setCalibrating((v) => !v)}
               aria-expanded={calibrating}
+              aria-label="Calibrate จุดวัด"
+              title="กำหนดจุดอ้างอิงบนภาพ"
             >
-              🎯 Calibrate
+              <IconTarget />
             </button>
           )}
-          <span className="d-auto" title="จอผนังไม่มีใครเดินไปกดปิด จึงกลับหน้ารวมเอง">
-            ↩ กลับหน้ารวมใน {remaining} วิ
-          </span>
-          <button className="d-close" onClick={onClose} aria-label="ปิด">
-            ✕
+          <button className="d-icon-btn" onClick={onClose} aria-label="ปิด" title="ปิด (Esc)">
+            <IconClose />
           </button>
         </div>
       </header>
@@ -380,12 +384,25 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
 
       {calibrating && (
         <div className="d-cfg d-calib">
+          {/* ปุ่มสองอันคนละระดับ: ขอภาพ = action หลักของขั้นตอนนี้ / ล้างจุด = ทำลาย
+              ต้องจางกว่าและอยู่คนละฝั่ง ไม่ให้กดพลาด */}
           <div className="d-calib-row">
-            <button type="button" onClick={requestNewSnap} disabled={snapStatus === "waiting"}>
-              {snapStatus === "waiting" ? "กำลังรอภาพ..." : "📷 ขอภาพใหม่สำหรับ calibrate"}
+            <button
+              type="button"
+              className="d-calib-primary"
+              onClick={requestNewSnap}
+              disabled={snapStatus === "waiting"}
+            >
+              <IconCamera size={16} />
+              {snapStatus === "waiting" ? "กำลังรอภาพ..." : "ขอภาพใหม่"}
             </button>
             {calibPoints.length > 0 && (
-              <button type="button" onClick={() => setCalibPoints([])} disabled={snapStatus === "waiting"}>
+              <button
+                type="button"
+                className="d-calib-ghost"
+                onClick={() => setCalibPoints([])}
+                disabled={snapStatus === "waiting"}
+              >
                 ล้างจุดทั้งหมด
               </button>
             )}
@@ -393,8 +410,7 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
           {snapStatus === "error" && <div className="d-err">{snapError}</div>}
 
           {calibImgFrameId ? (
-            <>
-              <div className="d-calib-hint">คลิกบนภาพเพื่อปักจุดอ้างอิง (อย่างน้อย 2 จุด) แล้วกรอกค่าจริง ณ จุดนั้น</div>
+            <div className="d-calib-stage">
               <div className="d-calib-imgwrap">
                 <img
                   className="d-calib-img"
@@ -412,36 +428,49 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
                     {i + 1}
                   </div>
                 ))}
+                {/* บอกว่าคลิกได้เฉพาะตอนยังไม่มีจุด — พอเริ่มปักแล้วผู้ใช้รู้แล้ว
+                    ไม่ต้องมีข้อความค้างบังภาพตลอด */}
+                {calibPoints.length === 0 && (
+                  <div className="d-calib-cue">คลิกบนภาพเพื่อปักจุดอ้างอิง</div>
+                )}
               </div>
-            </>
+            </div>
           ) : (
-            <div className="d-snap">📷 ยังไม่มีภาพให้ calibrate — กด "ขอภาพใหม่" ก่อน</div>
+            <div className="d-snap">ยังไม่มีภาพให้ calibrate — กด "ขอภาพใหม่" ก่อน</div>
           )}
 
           {calibPoints.length > 0 && (
             <div className="d-calib-list">
               {calibPoints.map((p, i) => (
                 <div className="d-calib-item" key={i}>
-                  <span className="d-calib-num">{i + 1}</span>
-                  <span className="d-calib-pos">
-                    x={(p.x * 100).toFixed(0)}% y={(p.y * 100).toFixed(0)}%
+                  {/* ตำแหน่ง x/y ไปอยู่ใน title แทนที่จะกินพื้นที่เป็นคอลัมน์ที่ 2 —
+                      ของสำคัญในแถวนี้คือ "ค่าจริง" ช่องเดียว ที่เหลือเป็นของประกอบ */}
+                  <span
+                    className="d-calib-num"
+                    title={`ตำแหน่งบนภาพ x=${(p.x * 100).toFixed(0)}% y=${(p.y * 100).toFixed(0)}%`}
+                  >
+                    {i + 1}
                   </span>
-                  <input
-                    type="number"
-                    step="any"
-                    value={p.value}
-                    placeholder="ค่าจริง"
-                    onChange={(e) =>
-                      setCalibPoints((pts) => pts.map((q, j) => (j === i ? { ...q, value: e.target.value } : q)))
-                    }
-                  />
+                  <div className="d-calib-field">
+                    <input
+                      type="number"
+                      step="any"
+                      value={p.value}
+                      placeholder="ค่าที่อ่านได้ ณ จุดนี้"
+                      onChange={(e) =>
+                        setCalibPoints((pts) => pts.map((q, j) => (j === i ? { ...q, value: e.target.value } : q)))
+                      }
+                    />
+                    {point.unit && <span className="d-calib-unit">{point.unit}</span>}
+                  </div>
                   <button
                     type="button"
                     className="d-calib-rm"
                     onClick={() => setCalibPoints((pts) => pts.filter((_, j) => j !== i))}
                     aria-label={`ลบจุดที่ ${i + 1}`}
+                    title={`ลบจุดที่ ${i + 1}`}
                   >
-                    ✕
+                    <IconClose size={14} />
                   </button>
                 </div>
               ))}
@@ -465,111 +494,77 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
         </div>
       )}
 
-      <div className="d-now">
-        <div>
+      {/* HERO — ค่าปัจจุบัน + ภาพเทียบ อยู่แถวเดียวกัน น้ำหนักจริงจัง (คำถามหลักที่คนเปิดแผงมา)
+          value อยู่ซ้าย ภาพอยู่ขวา ทั้งสองอันมีขนาดใหญ่ให้เห็นทันทีไม่ต้องอ่านหา */}
+      <section className="d-hero">
+        <div className="d-hero-value">
           {unreadable ? (
-            <span className="v-unreadable">อ่านไม่ออก</span>
+            <div className="v-unreadable-big">อ่านไม่ออก</div>
           ) : point.value_num !== null ? (
-            <>
-              <span className="d-big">{formatValue(point.value_num, point.min_value, point.max_value)}</span>
-              {point.unit && <span className="v-unit"> {point.unit}</span>}
-            </>
+            <div className="d-value-wrap">
+              <span className="d-value-num">{formatValue(point.value_num, point.min_value, point.max_value)}</span>
+              {point.unit && <span className="d-value-unit">{point.unit}</span>}
+            </div>
           ) : point.value_text !== null ? (
-            <span className="d-big">{point.value_text}</span>
+            <div className="d-value-text">{point.value_text}</div>
           ) : (
-            <span className="v-none">ยังไม่มีค่า</span>
+            <div className="d-value-none">ยังไม่มีค่า</div>
           )}
-          <div className="d-sub">
-            {ageLabel(point.captured_at, now)}
-            {hasScale && ` · ช่วง ${point.min_value}–${point.max_value}${point.unit ? ` ${point.unit}` : ""}`}
-            {offline && " · เครื่องออฟไลน์"}
-            {!offline && stale && " · ค่าเก่า"}
+          <div className="d-hero-meta">
+            <span>{ageLabel(point.captured_at, now)}</span>
+            {hasScale && <span>ช่วง {point.min_value}–{point.max_value}{point.unit ? ` ${point.unit}` : ""}</span>}
+            {offline && <span className="d-meta-warn">เครื่องออฟไลน์</span>}
+            {!offline && stale && <span className="d-meta-warn">ค่าเก่า</span>}
           </div>
         </div>
-      </div>
+        <div className="d-hero-image">
+          {hasEvidence ? (
+            <img
+              src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest${point.frame_id ? `?f=${encodeURIComponent(point.frame_id)}` : ""}`}
+              alt={`ภาพจากกล้องของ ${point.label ?? point.point_id}`}
+              onError={() => setHasEvidence(false)}
+            />
+          ) : (
+            <div className="d-hero-nopic">ยังไม่มีภาพ</div>
+          )}
+        </div>
+      </section>
 
-      {/* ภาพล่าสุดจากกล้อง (T-011) — ตั้งใจไว้ติดกับตัวเลขบนสุด ไม่ใช่ท้ายแผง เพราะเป็น
-          สิ่งที่คนอยากเห็นทันทีที่เปิดแผงมา (เทียบภาพกับตัวเลขว่า AI อ่านตรงไหม) ไม่ใช่
-          ของที่ต้องเลื่อนหาหลังกราฟ/สถิติย้อนหลัง — ไม่ผูกกับสถานะอ่านได้/ไม่ได้ตอนนี้
-          มีภาพก็โชว์ ไม่มีก็บอกตรง ๆ ว่ายังไม่มี */}
-      <div className="d-lab">ภาพล่าสุดจากกล้อง</div>
-      {hasEvidence ? (
-        <img
-          className="d-evidence"
-          // เหตุผลเดียวกับใน PointCard.tsx — ผูกกับ frame_id กัน URL ค้างเดิมจนเบราว์เซอร์
-          // ไม่ยอมโหลดภาพใหม่ตาม
-          src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest${point.frame_id ? `?f=${encodeURIComponent(point.frame_id)}` : ""}`}
-          alt={`ภาพจากกล้องของ ${point.label ?? point.point_id}`}
-          onError={() => setHasEvidence(false)}
-        />
-      ) : (
-        <div className="d-snap">📷 ยังไม่มีภาพของจุดนี้</div>
-      )}
-
-      <div className="d-chips">
-        {RANGES.map((r) => (
-          <button
-            key={r.key}
-            className={`chip ${range === r.key ? "chip-on" : ""}`}
-            onClick={() => {
-              touch();
-              setRange(r.key);
-            }}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
-
-      {error && <div className="d-err">โหลดประวัติไม่ได้: {error}</div>}
-      {!error && buckets === null && <div className="hc-empty">กำลังโหลด...</div>}
-      {!error && buckets && <HistoryChart buckets={buckets} unit={point.unit} />}
-
-      {buckets && totals.samples > 0 && (
-        <>
-          <div className="d-lab">สัดส่วนคุณภาพในช่วงนี้ · {totals.samples} ค่า</div>
-          <div className="qbar">
-            {okCount > 0 && <i className="q-ok" style={{ width: `${pct(okCount)}%` }} />}
-            {totals.uncertain > 0 && <i className="q-unc" style={{ width: `${pct(totals.uncertain)}%` }} />}
-            {totals.unreadable > 0 && <i className="q-bad" style={{ width: `${pct(totals.unreadable)}%` }} />}
-          </div>
-          <div className="qleg">
-            <span>
-              <i className="dot q-ok" />
-              อ่านได้ {pct(okCount).toFixed(0)}%
+      {/* TIMELINE — tab บาง underline ไม่ใช่ pill filled ; chart edge-to-edge ไม่ห่อ card */}
+      <section className="d-timeline">
+        <div className="d-tabs">
+          {RANGES.map((r) => (
+            <button
+              key={r.key}
+              className={`d-tab ${range === r.key ? "d-tab-on" : ""}`}
+              onClick={() => { touch(); setRange(r.key); }}
+            >
+              {r.label}
+            </button>
+          ))}
+          {buckets && totals.samples > 0 && (
+            <span className="d-tab-summary">
+              {totals.samples} ค่า · <b className="q-ok-text">{pct(okCount).toFixed(0)}%</b> ปกติ
+              {totals.uncertain > 0 && <> · <b className="q-unc-text">{pct(totals.uncertain).toFixed(0)}%</b> ไม่มั่นใจ</>}
+              {totals.unreadable > 0 && <> · <b className="q-bad-text">{pct(totals.unreadable).toFixed(0)}%</b> อ่านไม่ออก</>}
             </span>
-            {totals.uncertain > 0 && (
-              <span>
-                <i className="dot q-unc" />
-                ไม่มั่นใจ {pct(totals.uncertain).toFixed(0)}%
-              </span>
-            )}
-            <span>
-              <i className="dot q-bad" />
-              อ่านไม่ออก {pct(totals.unreadable).toFixed(0)}%
-            </span>
-          </div>
-        </>
-      )}
+          )}
+        </div>
 
-      <div className="d-grid">
-        <div className="d-box">
-          <div className="t">ต่ำสุด / สูงสุด ในช่วง</div>
-          <div className="v">{lo !== null ? `${formatValue(lo, point.min_value, point.max_value)} – ${formatValue(hi!, point.min_value, point.max_value)}` : "—"}</div>
-        </div>
-        <div className="d-box">
-          <div className="t">confidence ล่าสุด</div>
-          <div className="v">{point.confidence !== null ? point.confidence.toFixed(2) : "—"}</div>
-        </div>
-        <div className="d-box">
-          <div className="t">นาฬิกา edge ต่างจากเรา</div>
-          <div className="v">{drift !== null ? `${drift >= 0 ? "+" : ""}${drift.toFixed(1)} วิ` : "—"}</div>
-        </div>
-        <div className="d-box">
-          <div className="t">frame ล่าสุด</div>
-          <div className="v v-sm">{point.frame_id ?? "—"}</div>
-        </div>
-      </div>
+        {error && <div className="d-err">โหลดประวัติไม่ได้: {error}</div>}
+        {!error && buckets === null && <div className="hc-empty">กำลังโหลด...</div>}
+        {!error && buckets && <HistoryChart buckets={buckets} unit={point.unit} />}
+      </section>
+
+      {/* META FOOTER — inline mono ; ข้อมูลอ้างอิงทางเทคนิคที่ไม่ควรแข่งกับข้อมูลหลัก
+          กราวลง จบเบา ๆ เป็น "รายละเอียดของช่างเทคนิค" ไม่ใช่ 4 กล่องเน้นเท่ากับส่วนหลัก */}
+      <footer className="d-meta">
+        <span>ต่ำ/สูง ในช่วง <b>{lo !== null ? `${formatValue(lo, point.min_value, point.max_value)}–${formatValue(hi!, point.min_value, point.max_value)}` : "—"}</b></span>
+        <span>confidence <b>{point.confidence !== null ? point.confidence.toFixed(2) : "—"}</b></span>
+        <span>drift <b>{drift !== null ? `${drift >= 0 ? "+" : ""}${drift.toFixed(1)}s` : "—"}</b></span>
+        {point.frame_id && <span className="d-meta-frame">frame {point.frame_id}</span>}
+        <span className="d-meta-auto" aria-live="polite">ปิดใน {remaining}s</span>
+      </footer>
     </aside>
   );
 }
