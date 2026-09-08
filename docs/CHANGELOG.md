@@ -6,6 +6,19 @@
 
 ---
 
+## fix(T-014): จุด calibrate ที่ปักไม่ตรงกับตำแหน่งเมาส์ (เลื่อนไปทางขวา)  🟢
+- ผู้ใช้แจ้งว่าคลิกบนภาพแล้วจุดขึ้นไม่ตรงกับ cursor เลื่อนไปทางขวา ~100px+
+- สาเหตุ: `.d-calib-imgwrap` (inline-block) อยู่ใน `.d-cfg` ซึ่งเป็น flex column ที่
+  `align-items: stretch` (default) — ดึง wrap ให้กว้างเท่าคอนเทนเนอร์ทั้งที่เป็น inline-block
+  (529px vs ภาพจริง 402px = ล้น 127px) พอคลิก `getBoundingClientRect()` ของ wrap ให้
+  ขนาดใหญ่เกินภาพ ทำให้ x เศษส่วนคำนวณผิด แล้ววาดจุดเลื่อนไปทางขวา
+- แก้: เพิ่ม `align-self: flex-start` ให้ `.d-calib-imgwrap` กัน stretch — จุดกับภาพจริงตรง
+  กันเป๊ะทั้ง width และ position
+- verify: DevTools ยืนยัน `imgRect === wrapRect` (402×302 ทั้งคู่ ก่อนแก้ wrap = 529px)
+  หลังแก้: `sameWidth: true, sameLeft: true`
+
+---
+
 ## T-014: UI canvas สำหรับ calibrate จุดวัด GAUGE — เสร็จ 1/2 (GAUGE เท่านั้น)  🟡
 - ทีม AI implement edge sub เสร็จแล้ว (คุยกันในแชท 2026-09-07/08) T-013 ปลดบล็อกให้ทำ UI ต่อได้
 - ปุ่ม **"🎯 Calibrate"** ใน `PointDetail.tsx` — โชว์เฉพาะจุด `kind=GAUGE` (7-segment/water meter

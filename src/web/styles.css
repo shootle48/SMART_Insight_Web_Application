@@ -436,7 +436,10 @@ body {
 }
 .d-calib-row button:disabled { opacity: 0.6; cursor: default; }
 .d-calib-hint { font-size: 18px; color: var(--muted); }
-.d-calib-imgwrap { position: relative; display: inline-block; max-width: 100%; }
+/* .d-calib อยู่ใน .d-cfg ซึ่งเป็น flex column — align-items ปริยาย (stretch) จะดึงกล่องนี้
+   ให้กว้างเท่าคอนเทนเนอร์ทั้งที่เป็น inline-block ทำให้ % ตำแหน่งจุดคำนวณผิดจากภาพจริง
+   (จุดเลื่อนไปทางขวา เพราะฐานคำนวณกว้างกว่าภาพจริง) ต้องกัน stretch ด้วย align-self เอง */
+.d-calib-imgwrap { position: relative; display: inline-block; max-width: 100%; align-self: flex-start; }
 .d-calib-img { display: block; max-width: 100%; border-radius: 8px; border: 1px solid var(--line); cursor: crosshair; }
 /* จุดปัก — ใช้ transform ดึงกึ่งกลางวงกลมมาทับตำแหน่งคลิกจริง ไม่ใช่มุมบนซ้าย */
 .d-calib-dot {
