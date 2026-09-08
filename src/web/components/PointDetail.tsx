@@ -260,6 +260,28 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
     };
   }, [point.point_id, range]);
 
+  // ดึงกราฟซ้ำเงียบ ๆ ทุกครั้งที่มีเฟรมใหม่เข้ามาทาง SSE (captured_at เปลี่ยน) —
+  // 🔴 บั๊กเดิม (2026-09-08): effect ด้านบนผูกแค่ point_id/range กราฟเลยไม่ขยับเลย
+  // จนกว่าจะเปลี่ยนช่วงเวลาหรือปิด-เปิดแผงใหม่ ทั้งที่ค่าบนจอ (ก้อนบนสุด) วิ่งเป็นค่าใหม่ตลอด
+  //
+  // ตั้งใจไม่ setBuckets(null) ที่นี่เหมือน effect บน — จะกลายเป็นกราฟกระพริบเป็น "กำลังโหลด"
+  // ทุกครั้งที่มีค่าใหม่ ซึ่งถี่กว่าตอนเปลี่ยน range/จุดมาก แค่แทนที่ข้อมูลเดิมเงียบ ๆ พอ
+  useEffect(() => {
+    if (point.captured_at === null) return;
+    let cancelled = false;
+    fetchHistory(point.point_id, range)
+      .then((b) => !cancelled && setBuckets(b))
+      .catch(() => {
+        /* เงียบไว้ — error ของการโหลดครั้งแรกยังโชว์ค้างอยู่แล้ว ไม่ต้องแย่งจอ */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ตั้งใจไม่ใส่ point.point_id/range:
+    // ให้ effect บนจัดการตอน mount/เปลี่ยนช่วงเวลา (พร้อม loading state) ส่วนอันนี้จับแค่
+    // "มีเฟรมใหม่" อย่างเดียว ไม่งั้นจะยิงซ้ำสองรอบทุกครั้งที่เปลี่ยนจุด/ช่วงเวลา
+  }, [point.captured_at]);
+
   const stale = isStale(point.captured_at, now);
   const offline = point.device_status !== "ONLINE";
   const unreadable = point.quality === "UNREADABLE";
