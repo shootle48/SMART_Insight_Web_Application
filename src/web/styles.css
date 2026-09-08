@@ -25,6 +25,44 @@
  *     (ไม่งั้นสลับธีมแล้วไม่ตาม)
  */
 
+/* ฟอนต์ไทย "ไม่มีหัว" (loopless) — self-host แทนพึ่ง Google Fonts CDN ตอนรัน
+ *
+ * 🔴 ที่เห็นเป็นฟอนต์ "มีหัว" มาตลอด (2026-09-08): --sans ข้างล่างอ้าง "Noto Sans Thai"
+ * อยู่แล้ว ซึ่งดีไซน์เริ่มต้นของมันคือไม่มีหัว แต่ไม่เคยถูกโหลดจริง (ไม่มี @font-face ไม่มี
+ * ไฟล์ในเครื่อง) เบราว์เซอร์เลยข้ามไปจนสุด stack แล้ว resolve "sans-serif" เป็นฟอนต์ไทย
+ * ของ OS แทน — บน Windows dev คือ "Leelawadee UI" ซึ่งเป็นแบบมีหัวดั้งเดิม
+ *
+ * เลือก self-host (ไม่ใช้ <link> ไป fonts.googleapis.com ตรง ๆ) เพราะจอนี้เป็น kiosk
+ * โรงงานที่อาจไม่มี internet เข้าถึง Google CDN ตลอดเวลา — ฟอนต์ต้องมากับ build ไม่ใช่
+ * พึ่งเน็ตตอนรันจริง ; ตัดมาเฉพาะ unicode-range ของอักขระไทย (ตามที่ Google เองแบ่ง subset
+ * ไว้) ไม่รวม latin เพราะตัวอักษรอังกฤษใช้ Segoe UI/system-ui ที่มากับเครื่องอยู่แล้ว
+ * (ไฟล์เล็กลงจาก ~140KB/weight เหลือ ~9KB/weight)
+ */
+@font-face {
+  font-family: "Noto Sans Thai";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/noto-sans-thai-400.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: "Noto Sans Thai";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/noto-sans-thai-600.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: "Noto Sans Thai";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/noto-sans-thai-700.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+
 :root {
   /* พื้น — palette จาก Evreghen Command Center design (2026-09-08)
      off-white อุ่น (warm paper/light stone) ไม่ใช่ขาวจ้า */
@@ -86,6 +124,8 @@
   --r-pill: 9999px;
 
   --mono: ui-monospace, "DejaVu Sans Mono", "JetBrains Mono", "Cascadia Mono", monospace;
+  /* "Noto Sans Thai" ตอนนี้ self-host ไว้ด้านบน (@font-face) — รับประกันไม่มีหัวจริง
+     ไม่ใช่พึ่งฟอนต์ไทยของ OS ที่ติดตั้งไว้ (ต่างเครื่องต่างดีไซน์ ; ของ Windows มีหัว) */
   --sans: "Segoe UI", system-ui, -apple-system, "Noto Sans Thai", "Noto Sans", sans-serif;
 }
 
@@ -129,6 +169,23 @@ body {
   font-family: var(--sans);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+}
+
+/* ทรานซิชันสี — ให้การสลับ theme และการเปลี่ยนสถานะ (ok→uncertain/over ฯลฯ) ไหลลื่น
+   แทนที่จะกระโดดวูบเดียว ตั้งใจจำกัดแค่ background-color/color/border-color เท่านั้น
+   (ไม่แตะ transform/backdrop-filter — Pi 5 รัน effect หนัก ๆ ต่อเนื่องไม่ไหว ตาม D-011)
+   รายชื่อ element คือจุดที่สีเปลี่ยนบ่อย: ทุก surface บนหน้า + ตัวบ่งชี้สถานะทั้งหมด */
+body, .card, .card-rail, .dev, .devicebar .dev-dot, .detail, .d-cfg, .d-hero,
+.d-timeline, .conf-track, .tag, .v-num, .v-text, .d-value-num, .d-icon-btn,
+.theme-toggle button {
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  body, .card, .card-rail, .dev, .devicebar .dev-dot, .detail, .d-cfg, .d-hero,
+  .d-timeline, .conf-track, .tag, .v-num, .v-text, .d-value-num, .d-icon-btn,
+  .theme-toggle button {
+    transition: none;
+  }
 }
 
 /* พื้นหลังก้อนเรืองแสงของธีมมืดเดิม ปิดทิ้งบนพื้นขาว — เคยลองแล้วตอนทำ mock
@@ -239,7 +296,10 @@ body {
   display: flex;
   gap: 12px;
   align-items: center;
+  animation: fadein .15s ease-out;
 }
+@keyframes fadein { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .err { animation: none; } }
 .err button {
   background: var(--bad);
   border: 0;
@@ -375,7 +435,9 @@ body {
 .conf-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .conf-pct { font-family: var(--mono); font-size: 13px; font-weight: 600; }
 .conf-track { height: 4px; border-radius: var(--r-pill); background: var(--track); overflow: hidden; }
-.conf-fill { display: block; height: 100%; border-radius: var(--r-pill); }
+/* ไหลไปตามค่าใหม่แทนกระโดด — ทุกครั้งที่ confidence เปลี่ยน (SSE ค่าใหม่) */
+.conf-fill { display: block; height: 100%; border-radius: var(--r-pill); transition: width .3s ease, background-color .2s ease; }
+@media (prefers-reduced-motion: reduce) { .conf-fill { transition: background-color .2s ease; } }
 
 /* ---------- ท้ายการ์ด ---------- */
 .card-foot {
@@ -460,7 +522,9 @@ body {
 .d-icon-btn[aria-expanded="true"] { background: color-mix(in srgb, var(--primary) 12%, transparent); color: var(--primary-strong); border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
 
 /* ฟอร์มตั้งค่าจุด / calibrate — บล็อก surface เดียวกับ hero/timeline ให้ทั้งแผงเป็นระบบเดียว */
-.d-cfg { display: flex; flex-direction: column; gap: 12px; margin: 20px 0; padding: 20px; border-radius: var(--r-card); background: var(--surface); }
+.d-cfg { display: flex; flex-direction: column; gap: 12px; margin: 20px 0; padding: 20px; border-radius: var(--r-card); background: var(--surface); animation: fadeslide .15s ease-out; }
+@keyframes fadeslide { from { opacity: 0; transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .d-cfg { animation: none; } }
 /* label ในฟอร์ม = field label จริง จึงใช้ micro-label uppercase ตรงนี้ถูกต้อง */
 .d-cfg label { display: flex; flex-direction: column; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .d-cfg input {
@@ -489,6 +553,7 @@ body {
   color: var(--text);
   cursor: pointer;
   font-family: inherit;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 .d-cfg-actions button:disabled { opacity: 0.55; cursor: default; }
 
@@ -502,6 +567,7 @@ body {
   border-radius: var(--r-md);
   cursor: pointer;
   font-family: inherit;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 .d-calib-row button:disabled { opacity: 0.55; cursor: default; }
 /* ปุ่มหลักของขั้นตอนนี้ — ทึบ มีน้ำหนัก */
@@ -537,6 +603,7 @@ body {
   /* affordance ว่าคลิกได้ — ขอบประจาง ๆ สื่อ "พื้นที่ทำงาน" ไม่ใช่ภาพนิ่งเฉย ๆ */
   outline: 1px dashed var(--line);
   outline-offset: -1px;
+  transition: outline-color .15s ease;
 }
 .d-calib-img:hover { outline-color: var(--primary); }
 /* ป้ายบอกให้คลิก — ลอยบนภาพตอนยังไม่มีจุด แล้วหายไปเมื่อเริ่มปัก */
@@ -571,7 +638,10 @@ body {
   font-weight: 700;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
   pointer-events: none;
+  animation: dot-pop .15s ease-out;
 }
+@keyframes dot-pop { from { transform: scale(0.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .d-calib-dot { animation: none; } }
 
 .d-calib-list { display: flex; flex-direction: column; gap: 8px; }
 .d-calib-item { display: flex; align-items: center; gap: 10px; }
@@ -623,6 +693,7 @@ body {
   cursor: pointer;
   display: grid;
   place-items: center;
+  transition: background-color .15s ease, color .15s ease;
 }
 .d-calib-rm:hover { color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); }
 
@@ -693,6 +764,7 @@ body {
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   border-radius: 0;
+  transition: color .15s ease, border-bottom-color .15s ease;
 }
 .d-tab:hover { color: var(--text); }
 .d-tab-on { color: var(--primary-strong); border-bottom-color: var(--primary); font-weight: 600; }

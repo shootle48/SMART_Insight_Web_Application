@@ -6,6 +6,29 @@
 
 ---
 
+## polish: ทรานซิชันลื่นทั้งจอ + ฟอนต์ไทยไม่มีหัว + ปิดแผง detail ได้จากที่อื่นนอกจากปุ่ม X  🟢
+- **ทรานซิชัน** ([styles.css](src/web/styles.css)): เพิ่ม transition สี (bg/color/border) ให้ theme
+  switch + การเปลี่ยนสถานะการ์ด (ok→uncertain/over ฯลฯ) ไม่กระโดดวูบ ; แถบ confidence ไหล
+  ตามค่าใหม่แทนกระโดด ; แท็บช่วงเวลาในกราฟไหลสีตอนสลับ ; ฟอร์ม config/error banner fade-in ;
+  จุดปัก calibrate pop-in ; ทุก keyframe animation ใหม่ respect `prefers-reduced-motion`
+  จำกัดเฉพาะ background-color/color/border-color/width เท่านั้น ไม่แตะ transform/backdrop-filter
+  หนัก ๆ (Pi 5 รัน effect ต่อเนื่องไม่ไหว ตาม D-011)
+- **ฟอนต์ไทยไม่มีหัว**: `--sans` เดิมอ้าง "Noto Sans Thai" อยู่แล้ว (ดีไซน์เริ่มต้นไม่มีหัว)
+  แต่ไม่เคยโหลดจริง (ไม่มี `@font-face`) จึง fallback ไปฟอนต์ไทยของ OS แทน (Windows =
+  Leelawadee UI ซึ่งมีหัว) — self-host ไฟล์ .woff2 (400/600/700, subset เฉพาะ unicode-range
+  ไทยจาก Google เอง ~9KB/น้ำหนัก) ไว้ที่ `src/web/public/fonts/` แทนพึ่ง Google Fonts CDN
+  ตอนรัน เพราะจอนี้เป็น kiosk โรงงานที่อาจไม่มี internet ตลอดเวลา
+- **ปิดแผง detail จากที่อื่นได้** ([PointDetail.tsx](src/web/components/PointDetail.tsx)):
+  เดิมมีแค่ปุ่ม X กับ Escape (คีย์บอร์ดจริง ไม่มีบนจอทัชสกรีนโรงงาน) เพิ่ม pointerdown
+  listener ที่ document (capture phase) — แตะนอกตัวแผงและไม่ใช่การ์ดจุดอื่น → ปิด ; แตะ
+  การ์ดจุดอื่นยังคงสลับไปดูจุดนั้นตามเดิม ไม่ปิด
+- verify: `bun run type-check` ผ่าน ; ทดสอบที่ dev ครบ — สลับ theme/เปลี่ยนแท็บ/เปิดฟอร์ม
+  config/ปักจุด calibrate ลื่นไม่กระตุก ; ฟอนต์โหลดครบ 3 น้ำหนัก (`document.fonts` "loaded")
+  ตัวอักษรไทยไม่มีหัวทั้งหน้า ; แตะพื้นที่ว่างปิดแผงได้ , แตะการ์ดอื่นสลับจุดไม่ปิด ,
+  แตะในฟอร์ม/อินพุตข้างในแผงไม่ปิดพลาด ; ไม่มี console error ใหม่
+
+---
+
 ## fix: กราฟย้อนหลังในหน้า detail ไม่เรียลไทม์  🟢
 - ผู้ใช้แจ้ง: ต้องกดรีเฟรช/เปลี่ยนช่วงเวลาถึงจะเห็นกราฟขยับ ทั้งที่ค่าบนสุด (SSE) วิ่งปกติ
 - ต้นเหตุ: useEffect ที่ดึง `/history` ใน [PointDetail.tsx](src/web/components/PointDetail.tsx)

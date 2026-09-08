@@ -229,6 +229,10 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
     lastTouch.current = Date.now();
   }, []);
 
+  // ปิดแผงตอนแตะนอกแผง — เดิมมีแต่ปุ่ม X กับ Escape (คีย์บอร์ดจริง ไม่มีบนจอทัชสกรีนโรงงาน)
+  // ผู้ใช้ทัชสกรีนคาดหวังแตะที่ว่างแล้วปิดได้เหมือน modal ทั่วไป
+  const panelRef = useRef<HTMLElement>(null);
+
   // นับถอยหลังแล้วปิดเอง — แสดงเลขให้เห็นด้วย ไม่ให้หน้าจอหายไปเฉย ๆ แบบไม่มีปี่มีขลุ่ย
   useEffect(() => {
     const t = setInterval(() => {
@@ -247,6 +251,23 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, touch]);
+
+  // ใช้ pointerdown (ครอบทั้งเมาส์และทัช) ไม่ใช่ click — ตอบสนองไวกว่าตั้งแต่เริ่มแตะ
+  // capture: true กันเผื่ออนาคตมีปุ่ม/อินพุตข้างในแผง stopPropagation ไว้ (ตอนนี้ยังไม่มี
+  // แต่ capture phase ทำงานก่อนเสมอไม่ว่าจะมีวันหลังหรือเปล่า ปลอดภัยไว้ก่อน)
+  //
+  // เงื่อนไขปิด: แตะนอกตัวแผงเอง (panelRef) **และ** ไม่ใช่การ์ดจุดอื่นในหน้ารวม —
+  // แตะการ์ดต้องปล่อยให้ onOpen ของการ์ดนั้นจัดการแทน (สลับไปดูจุดอื่น ไม่ใช่ปิดแผง)
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (panelRef.current?.contains(target)) return;
+      if (target?.closest(".card")) return;
+      onClose();
+    };
+    document.addEventListener("pointerdown", onPointerDown, { capture: true });
+    return () => document.removeEventListener("pointerdown", onPointerDown, { capture: true });
+  }, [onClose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -311,7 +332,7 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
       : null;
 
   return (
-    <aside className="detail" onPointerDown={touch} onPointerMove={touch} onWheel={touch}>
+    <aside ref={panelRef} className="detail" onPointerDown={touch} onPointerMove={touch} onWheel={touch}>
       <header className="d-head">
         <div className="d-head-title">
           <h2>{point.label ?? point.point_id}</h2>
