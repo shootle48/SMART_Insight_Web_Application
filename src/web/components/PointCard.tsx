@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from "react";
 import type { PointRow } from "../apiClient";
+import { useEvidenceSrc } from "../useEvidenceSrc";
 import { ageLabel, formatValue, isStale } from "../time";
 
 type Props = { point: PointRow; now: number; onOpen?: () => void; selected?: boolean };
@@ -22,6 +23,7 @@ export function PointCard({ point, now, onOpen, selected }: Props) {
   // ที่ App.tsx เรียกใช้อยู่แล้ว แต่กันพลาดไว้อีกชั้นเผื่อวันหนึ่งมีคนเอา key ออก)
   const [hasEvidence, setHasEvidence] = useState(true);
   useEffect(() => setHasEvidence(true), [point.point_id]);
+  const evidenceSrc = useEvidenceSrc(point.point_id, point.frame_id);
 
   const offline = point.device_status !== "ONLINE";
   const stale = isStale(point.captured_at, now);
@@ -125,10 +127,9 @@ export function PointCard({ point, now, onOpen, selected }: Props) {
           {hasEvidence && (
             <img
               className="card-thumb"
-              // ผูก query string เข้ากับ frame_id — URL เดิมทุกครั้งเบราว์เซอร์จะไม่ยิงคำขอใหม่ให้เอง
-              // แม้ไฟล์บนเซิร์ฟเวอร์เปลี่ยนไปแล้ว (ต่างจากตัวเลขที่ผ่าน React state ให้เอง)
-              // frame_id เปลี่ยนทุกครั้งที่ SSE ส่งค่าใหม่เข้ามาพอดี ไม่ต้อง poll เพิ่มเอง
-              src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest${point.frame_id ? `?f=${encodeURIComponent(point.frame_id)}` : ""}`}
+              // ภาพต้องเป็นของ "เฟรมเดียวกับค่าที่โชว์อยู่" — useEvidenceSrc คุมทั้งการผูก
+              // frame_id (กันเบราว์เซอร์ cache ค้าง) และการขอซ้ำเมื่อภาพมาช้ากว่าค่า
+              src={evidenceSrc}
               alt=""
               onError={() => setHasEvidence(false)}
             />

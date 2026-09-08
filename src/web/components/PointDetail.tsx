@@ -20,6 +20,7 @@ import {
 } from "../apiClient";
 import { HistoryChart } from "./HistoryChart";
 import { IconCamera, IconClose, IconSettings, IconTarget } from "./Icons";
+import { useEvidenceSrc } from "../useEvidenceSrc";
 import { ageLabel, formatValue, isStale } from "../time";
 
 /** จุดที่กำลังแก้ในฟอร์ม calibrate — value เป็น string ระหว่างพิมพ์ (เว้นว่างได้ชั่วคราว) */
@@ -71,6 +72,7 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
   // ไม่ได้ unmount ตอนกดการ์ดอื่นขณะแผงเปิดอยู่ (state เดิมจะค้างข้ามจุด)
   const [hasEvidence, setHasEvidence] = useState(true);
   useEffect(() => setHasEvidence(true), [point.point_id]);
+  const evidenceSrc = useEvidenceSrc(point.point_id, point.frame_id);
 
   // แผง calibrate (T-014) — เฉพาะ GAUGE ตามที่ ticket กำหนดไว้ก่อน (7-segment/water meter
   // ทำทีหลัง เพราะ fixture คนละรูปแบบ ต้องมี UI ต่างกัน)
@@ -520,7 +522,7 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
         <div className="d-hero-image">
           {hasEvidence ? (
             <img
-              src={`/api/evidence/${encodeURIComponent(point.point_id)}/latest${point.frame_id ? `?f=${encodeURIComponent(point.frame_id)}` : ""}`}
+              src={evidenceSrc}
               alt={`ภาพจากกล้องของ ${point.label ?? point.point_id}`}
               onError={() => setHasEvidence(false)}
             />
