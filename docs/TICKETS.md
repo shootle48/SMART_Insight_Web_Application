@@ -103,8 +103,13 @@ note:       ต้อง block ทำใบนี้จนกว่า T-013 (ba
 progress:   2026-09-08 GAUGE เสร็จแล้ว — ปุ่ม Calibrate + แผงคลิกปักจุด/กรอกค่า/บันทึก ครบ
             วงจร ทดสอบผ่าน mosquitto_pub จำลอง edge ตอบกลับจริงบน dev (ภาพโหลด, จุดวาดตำแหน่ง
             ถูก, validate <2 จุด/ค่าว่างถูกกัน, save แล้ว DB+MQTT retained ตรงกัน)
-            2026-09-09 **ตัด SEVEN_SEGMENT / WATER_METER ออกจาก scope ถาวร** (ดู note) —
-            งานที่เหลือของใบนี้จึงเหลือข้อเดียว: **ยังไม่ได้ deploy ขึ้น Pi ทดสอบกับ edge จริง**
+            2026-09-09 **ตัด SEVEN_SEGMENT / WATER_METER ออกจาก scope ถาวร** (ดู note)
+            2026-09-09 **deploy ขึ้น Pi แล้ว** (ผู้ใช้ deploy เอง + verify บั๊กภาพช้า 1 เฟรมหายจริง)
+            → เงื่อนไข "ทดสอบบน Pi" ของใบนี้ผ่านฝั่งเราครบแล้ว
+            🔒 **ที่เหลือบล็อกอยู่ฝั่งทีม AI อย่างเดียว** — ต้องมี edge จริงที่ sub
+            `command/snap-for-calibration` แล้วตอบ evidence `kind=CALIBRATION` + apply config
+            ที่ได้รับ ถึงจะพิสูจน์ done-when ข้อ "edge อ่านค่าได้ถูกหลัง calibrate" ได้
+            **อยู่นอกขอบเขตเรา — อย่านับเป็นงานค้างของเรา**
 
 ## T-013 [P2] backend + edge integration สำหรับ calibrate ผ่าน UI — doing
 why:        D-017 เคาะ pattern แล้ว ; ครึ่งแรกคือทำให้ browser สั่ง snap + publish config
