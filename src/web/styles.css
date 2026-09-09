@@ -104,6 +104,19 @@
   --primary-strong: #f97015;
   --primary-warm: #ffb74d;
   --on-banner: #ffffff;
+
+  /* พื้นปุ่มหลัก แยกจาก --primary (T-021)
+     --primary เป็นสีเน้น/rail/focus ring ได้ เพราะของพวกนั้นเป็น non-text ใช้เกณฑ์ 3:1
+     แต่เอามาเป็น "พื้นปุ่มที่มีตัวหนังสือ" ไม่ได้ — คำนวณจริงได้แค่ 2.86:1 (สว่าง) / 2.82:1 (มืด)
+     กับตัวอักษรขาว ซึ่งตกเกณฑ์ AA 4.5:1 ทั้งคู่ ; แก้แบบเดียวกับที่ D-014/D-015 ทำกับสีสถานะ
+     คือคำนวณเวอร์ชันที่ผ่านแยกต่อธีม ไม่ใช่ปรับสายตา
+     สว่าง: ส้มเข้ม + ตัวอักษรขาว = 5.18:1 · แยกจากพื้นการ์ด 4.48:1 */
+  --primary-btn: #c2410c;
+  --primary-btn-hover: #9a3412;
+  --on-primary-btn: #ffffff;
+  /* ตัวอักษร/ไอคอนบนพื้น --primary สด ๆ — นิยามครั้งเดียวไม่แยกธีม เพราะที่เดียวที่ใช้คือ
+     ปุ่มบนแถบ --shell ซึ่งเป็นสีมืดเหมือนกันทั้งสองธีม (ขาวบนส้มสดได้แค่ 2.86:1 ตก AA) */
+  --on-primary: #2b2622;
   --panel-solid: #ffffff;
   --track: rgba(66, 61, 56, 0.08);
 
@@ -157,7 +170,12 @@
   --primary: #fe6e00;
   --primary-strong: #ff8933;
   --primary-warm: #ffb74d;
-  --on-banner: #2b2622; /* พื้น banner ในธีมมืดสว่างนวล ตัวหนังสือต้องเข้ม */
+  --on-banner: #2b2622;
+  /* ธีมมืดกลับด้าน: พื้นหลังมืดอยู่แล้ว ปุ่มจึงใช้ส้มสดได้ (แยกจากพื้นการ์ด 4.06:1)
+     แต่ต้องเปลี่ยนตัวอักษรเป็นสีเข้มแทนขาว จึงจะได้ 5.31:1 — ขาวบนส้มสดได้แค่ 2.82:1 */
+  --primary-btn: #fe6e00;
+  --primary-btn-hover: #ff8933;
+  --on-primary-btn: #2b2622; /* พื้น banner ในธีมมืดสว่างนวล ตัวหนังสือต้องเข้ม */
   --track: rgba(255, 255, 255, 0.1);
 }
 
@@ -266,7 +284,9 @@ body, .card, .card-rail, .dev, .devicebar .dev-dot, .detail, .d-cfg, .d-hero,
   transition: background .12s, color .12s;
 }
 .theme-toggle button:hover { color: var(--on-shell); }
-.theme-toggle button.on { background: var(--primary); color: #fff; }
+/* ปุ่มนี้อยู่บนแถบ --shell ที่มืดทั้งสองธีม จึงใช้ส้มสดได้ (แยกจากแถบ 5.03:1)
+   แต่ไอคอนต้องเป็นสีเข้ม ไม่ใช่ขาว — ขาวบนส้มสดได้แค่ 2.86:1 ตกเกณฑ์ 3:1 ของ non-text (T-021) */
+.theme-toggle button.on { background: var(--primary); color: var(--on-primary); }
 
 /* ================= WORKSPACE ================= */
 .app { padding: 32px; max-width: 1560px; margin: 0 auto; }
@@ -402,12 +422,12 @@ body, .card, .card-rail, .dev, .devicebar .dev-dot, .detail, .d-cfg, .d-hero,
    ผลคือปุ่มได้พื้น --panel กับตัวอักษร --text = ธีมมืดจะได้ขาวบนขาว มองไม่เห็นเลย
    (แบบเดียวกับ `.theme-toggle button.on` ที่เขียนถูกไว้แล้ว) */
 .dev-rename button.dev-rename-save {
-  background: var(--primary);
-  color: #fff;
+  background: var(--primary-btn);
+  color: var(--on-primary-btn);
   border-color: transparent;
   font-weight: 600;
 }
-.dev-rename button.dev-rename-save:hover:not(:disabled) { background: var(--primary-strong); }
+.dev-rename button.dev-rename-save:hover:not(:disabled) { background: var(--primary-btn-hover); }
 .dev-rename-err { flex: 1 0 100%; margin: 0; font-size: 13px; color: var(--bad); }
 .dev-meta {
   margin-top: 10px;
@@ -604,8 +624,18 @@ body, .card, .card-rail, .dev, .devicebar .dev-dot, .detail, .d-cfg, .d-hero,
 .d-cfg input:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: transparent; }
 .d-cfg-scale { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .d-cfg-actions { display: flex; gap: 8px; margin-top: 4px; }
-.d-cfg-save { background: var(--primary); color: #fff; border-color: transparent; font-weight: 600; }
-.d-cfg-save:hover:not(:disabled) { background: var(--primary-strong); }
+/* ⚠️ ต้องเป็น `.d-cfg-actions button.d-cfg-save` — เขียน `.d-cfg-save` เฉย ๆ จะแพ้
+   `.d-cfg-actions button` ข้างล่างที่ specificity (0,1,1) > (0,1,0) แม้จะเขียนก่อนก็ตาม
+   บั๊กเดิม (แก้ที่ T-021): ปุ่มบันทึกได้พื้น --panel ตอนปกติ แต่กลายเป็นสีส้มตอน hover
+   เพราะ `:hover:not(:disabled)` ดัน specificity ขึ้นเป็น (0,3,0) จนชนะ — ดูเหมือน hover
+   effect ที่ตั้งใจ เลยไม่มีใครสังเกตว่าสถานะปกติผิดมาตลอด */
+.d-cfg-actions button.d-cfg-save {
+  background: var(--primary-btn);
+  color: var(--on-primary-btn);
+  border-color: transparent;
+  font-weight: 600;
+}
+.d-cfg-actions button.d-cfg-save:hover:not(:disabled) { background: var(--primary-btn-hover); }
 .d-cfg-actions button {
   font-size: 14px;
   padding: 9px 16px;
