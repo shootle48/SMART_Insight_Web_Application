@@ -118,5 +118,10 @@ export function useLiveData() {
     setPoints((prev) => prev.map((p) => (p.point_id === pointId ? { ...p, ...patch } : p)));
   }, []);
 
-  return { points, devices, conn, error, reload: loadAll, patchPoint };
+  // เหตุผลเดียวกับ patchPoint — SSE ของ device กระจายแต่ status/heartbeat ไม่กระจาย label
+  const patchDevice = useCallback((deviceId: string, patch: Partial<DeviceRow>) => {
+    setDevices((prev) => prev.map((d) => (d.device_id === deviceId ? { ...d, ...patch } : d)));
+  }, []);
+
+  return { points, devices, conn, error, reload: loadAll, patchPoint, patchDevice };
 }

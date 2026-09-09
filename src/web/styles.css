@@ -346,7 +346,69 @@ body, .card, .card-rail, .dev, .devicebar .dev-dot, .detail, .d-cfg, .d-hero,
 .dev-ok .dev-dot { background: var(--ok); }
 .dev-quiet .dev-dot { background: var(--uncertain); }
 .dev-offline .dev-dot { background: var(--bad); }
-.dev-name { font-weight: 700; font-size: 19px; letter-spacing: -0.01em; margin-top: 8px; }
+/* ชื่อเครื่องเป็นปุ่ม (T-019) — reset ให้เหมือนข้อความเดิมเป๊ะ ไม่มีกรอบ/พื้น
+   ครอบเฉพาะบรรทัดชื่อ ไม่ใช่ทั้งบล็อก เพราะบล็อกกว้าง 260px+ ถ้ากดได้ทั้งใบคนหน้างาน
+   จะเผลอแตะบ่อยเกินจำเป็น (จอนี้ยังไม่มี auth กั้น — D-020) */
+.dev-name {
+  display: block;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: border-color .15s ease, color .15s ease;
+}
+.dev-name:hover { border-bottom-color: var(--line); }
+.dev-name:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: var(--r-xs); }
+/* ยังไม่ตั้งชื่อ = ที่ว่างรอคนเติม ไม่ใช่ชื่อ — จึงบางและจาง ต่างจากชื่อจริงที่หนา 700
+   (ของเดิม fallback เป็น device_id ทำให้ขึ้น id ซ้ำกับบรรทัดบน ดูเหมือนของเสีย) */
+.dev-unnamed { font-weight: 400; color: var(--muted); }
+
+.dev-rename { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+/* ช่องกรอกกินเต็มบรรทัดแล้วให้ปุ่มลงบรรทัดถัดไปพร้อมกันทั้งคู่ — บล็อกกว้างแค่ 260px
+   ถ้าปล่อยให้ไหลบรรทัดเดียวกัน "บันทึก" จะอยู่ข้างช่องแต่ "ยกเลิก" ตกบรรทัดเดี่ยว ๆ ดูเหมือนหลุด */
+.dev-rename input {
+  flex: 1 0 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: 15px;
+  padding: 8px 11px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+}
+.dev-rename button {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+.dev-rename button:disabled { opacity: 0.55; cursor: default; }
+/* ⚠️ ต้องเขียน `button.dev-rename-save` ไม่ใช่ `.dev-rename-save` เฉย ๆ — `.dev-rename button`
+   ข้างบนมี specificity (0,1,1) สูงกว่าคลาสเดี่ยว (0,1,0) จึงชนะแม้เราเขียนทีหลัง
+   ผลคือปุ่มได้พื้น --panel กับตัวอักษร --text = ธีมมืดจะได้ขาวบนขาว มองไม่เห็นเลย
+   (แบบเดียวกับ `.theme-toggle button.on` ที่เขียนถูกไว้แล้ว) */
+.dev-rename button.dev-rename-save {
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+}
+.dev-rename button.dev-rename-save:hover:not(:disabled) { background: var(--primary-strong); }
+.dev-rename-err { flex: 1 0 100%; margin: 0; font-size: 13px; color: var(--bad); }
 .dev-meta {
   margin-top: 10px;
   color: var(--muted);

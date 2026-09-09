@@ -1,8 +1,10 @@
 // สถานะเครื่อง edge ทั้งหมด
 
 import { Hono } from "hono";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "../../db/index";
+import { devices } from "../../db/schema";
 
 export const devicesApi = new Hono();
 
@@ -29,4 +31,35 @@ devicesApi.get("/", async (c) => {
   `);
 
   return c.json({ devices: rows });
+});
+
+const deviceLabelInput = z.object({
+  label: z.string().trim().min(1, "ต้องใส่ชื่อเครื่อง").max(80, "ชื่อยาวเกินไป (ไม่เกิน 80 ตัวอักษร)"),
+});
+
+/**
+ * ตั้งชื่อเครื่อง (T-019) — `ingest` สร้างแถว device ให้อัตโนมัติตอนเจอ `device_id` แปลกหน้า
+ * โดยไม่ใส่ `label` ทำให้จอขึ้นแต่ id ดิบที่คนหน้างานไม่รู้ว่าตู้ไหน ; ก่อนหน้านี้ตั้งได้ทางเดียว
+ * คือ `db:seed` ซึ่งใช้ที่โรงงานลูกค้าไม่ได้
+ *
+ * รับแค่ `label` อย่างเดียวโดยตั้งใจ — ฟิลด์อื่นในตาราง (`status`, `last_frame_at`, เวอร์ชัน ฯลฯ)
+ * เป็นของที่ edge รายงานเข้ามา ไม่ใช่ของที่คนตั้ง ถ้าเปิดให้แก้จะกลายเป็นข้อมูลปลอมที่
+ * ingest จะเขียนทับทีหลังอยู่ดี
+ */
+devicesApi.patch("/:deviceId", async (c) => {
+  const deviceId = c.req.param("deviceId");
+  const body = await c.req.json().catch(() => null);
+  const parsed = deviceLabelInput.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" }, 400);
+  }
+
+  const [updated] = await db
+    .update(devices)
+    .set({ label: parsed.data.label })
+    .where(eq(devices.device_id, deviceId))
+    .returning();
+
+  if (!updated) return c.json({ error: `ไม่พบเครื่อง ${deviceId}` }, 404);
+  return c.json({ device: updated });
 });

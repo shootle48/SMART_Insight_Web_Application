@@ -121,6 +121,20 @@ export async function updatePointConfig(pointId: string, config: PointConfigInpu
   return ((await res.json()) as { point: PointRow }).point;
 }
 
+/** ตั้งชื่อเครื่อง edge (T-019) — เครื่องที่ ingest สร้างเองจะไม่มี label จนกว่าคนจะตั้ง */
+export async function updateDeviceLabel(deviceId: string, label: string): Promise<DeviceRow> {
+  const res = await fetch(`/api/devices/${encodeURIComponent(deviceId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ label }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error((body as { error?: string } | null)?.error ?? `HTTP ${res.status}`);
+  }
+  return ((await res.json()) as { device: DeviceRow }).device;
+}
+
 /** ขอให้ edge snap ภาพดิบสำหรับ calibrate (T-013/T-014) — คืน request_id ให้ไป poll
  *  หาภาพที่ตรงกันทาง /api/evidence/:pointId/latest (header X-Frame-Id) */
 export async function requestCalibrationSnap(pointId: string): Promise<{ request_id: string }> {

@@ -19,7 +19,7 @@ function initialTheme(): "light" | "dark" {
 }
 
 export function App() {
-  const { points, devices, conn, error, reload, patchPoint } = useLiveData();
+  const { points, devices, conn, error, reload, patchPoint, patchDevice } = useLiveData();
 
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
   useEffect(() => {
@@ -127,7 +127,7 @@ export function App() {
         </div>
       )}
 
-      <DeviceBar devices={devices} now={now} />
+      <DeviceBar devices={devices} now={now} patchDevice={patchDevice} />
 
       {points.length === 0 && !error && <p className="empty">ยังไม่มีจุดวัดในระบบ</p>}
 

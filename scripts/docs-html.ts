@@ -15,7 +15,7 @@
 // ถ้าใช้กฎนั้นทั้งสองไฟล์จะกลายเป็นกล่องโค้ดทั้งไฟล์
 
 import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { join, basename } from "node:path";
+import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const DOCS = join(ROOT, "docs");
@@ -174,8 +174,6 @@ function inline(s: string): string {
   out = out.replace(/\b([TD]-\d{3}|OPEN-\d+)\b/g, '<span class="id">$1</span>');
   return out;
 }
-
-type Block = { html: string };
 
 function render(md: string): string {
   const lines = md.split(/\r?\n/);
