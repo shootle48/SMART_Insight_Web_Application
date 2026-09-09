@@ -116,10 +116,16 @@
 change ค้างบนนั้น) ซึ่ง**ใหม่กว่า** `104162f` จึงมีครบทั้ง fix ภาพ evidence · redesign UI (D-019)
 · polish ฟอนต์ไทย · T-013/T-014 calibrate
 
-🔴 **local ล้ำ `origin/main` อยู่ 7 commit ที่ยังไม่ push** — `1f06f27` `4a9da0d` `ade3f1b`
-`ae28eec` `ad8ad0d` `d0136ce` `fa91965` ; **ทั้งหมดเป็น docs/tooling ล้วน ไม่มีโค้ดที่รันจริง**
-Pi จึงไม่ได้ขาดอะไรที่มีผลต่อการทำงาน — push เมื่อไหร่ก็ได้ ไม่เร่ง
-(ถ้า push แล้ว Pi `git pull` จะได้แค่เอกสาร ไม่ต้อง `bun run build` / restart service ซ้ำ)
+**local ล้ำ `origin/main` อยู่หลาย commit ที่ยังไม่ push — ทั้งหมดเป็น docs/tooling ล้วน**
+(เอกสาร + `scripts/docs-html.ts`) **ไม่มีโค้ดที่รันจริงแม้แต่บรรทัดเดียว** Pi จึงไม่ได้ขาดอะไร
+ที่มีผลต่อการทำงาน — push เมื่อไหร่ก็ได้ ไม่เร่ง ; ถ้า push แล้ว Pi `git pull` จะได้แค่เอกสาร
+ไม่ต้อง `bun run build` หรือ restart service ซ้ำ
+
+<!-- จงใจไม่ไล่ hash ตรงนี้ — ลิสต์ hash จะเก่าทันทีที่ commit ถัดไป (รวมถึง commit ที่มาแก้
+     บรรทัดนี้เอง) ; อยากรู้ของจริงให้รัน: git log --oneline origin/main..HEAD -->
+🔴 **ถ้าเห็นว่ามี commit ที่แตะ `src/` ค้างอยู่เมื่อไหร่ = กลับไปเป็นหนี้ deploy ทันที**
+เช็คด้วย `git log --oneline origin/main..HEAD -- src/` ถ้าไม่ว่าง ต้อง deploy ก่อนทำอย่างอื่น
+(เกณฑ์ข้อ 1 ของ `docs/WORKFLOW.md` §0)
 
 ## สถานะ ณ 2026-09-09 เช้า (ย้าย session เพราะ context เต็ม)
 
