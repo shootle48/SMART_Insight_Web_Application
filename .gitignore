@@ -21,3 +21,7 @@ Thumbs.db
 # ตัวรายงานเผยแพร่เป็น artifact แทน (ลิงก์อยู่ใน CHANGELOG) ; สร้างใหม่ได้เสมอจากการรันเทสซ้ำ
 docs/TEST-EVIDENCE-*.html
 docs/INTEGRATION-MQTT-*.html
+
+# เอกสารทั้งชุดแปลงเป็น HTML ไว้อ่าน — สร้างใหม่ได้เสมอด้วย `bun run docs-html`
+# ต้นฉบับคือ .md ข้างเคียง ; track ไฟล์นี้ = มีของสองชุดที่เพี้ยนจากกันได้
+docs/DOCS.html
