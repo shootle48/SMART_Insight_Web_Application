@@ -63,7 +63,8 @@ bun run verify-contract 25   # พิสูจน์ว่า mock ยิงต�
 
 - **ทีม AI จะส่งข้อมูลเข้ามา → ส่ง `docs/PUBLISHING-GUIDE.md` ให้เขาอ่าน**
 - **เรื่องส่งภาพ snapshot → `docs/SNAPSHOT-PROPOSAL.md`** (เคาะแล้ว: MQTT topic แยก · D-013)
-- **เริ่ม session ใหม่ → `HANDOFF.md` ก่อนเสมอ** (สถานะเครื่อง · ของค้าง · คำถามค้างกับทีม AI · กับดัก)
+- **เริ่ม session ใหม่ → `HANDOFF.md` ก่อนเสมอ** (สถานะเครื่อง · ของค้าง · กับดัก)
+  แล้วดู `docs/WORKFLOW.md` §0 ว่าควรหยิบใบไหนก่อน + ไฟล์ไหนตอบคำถามแบบไหน
 - ออกแบบ/แก้โครงสร้าง → `docs/ARCHITECTURE.md`
 - จะเริ่มงานใหม่/ดู backlog → `docs/TICKETS.md`
 - สงสัยว่าทำไมตัดสินใจแบบนี้ → `docs/DECISIONS.md`
