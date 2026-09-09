@@ -21,39 +21,133 @@ const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "
 const DOCS = join(ROOT, "docs");
 const OUT = join(DOCS, "DOCS.html");
 
-/** คำอธิบายบทบาทของแต่ละไฟล์ — ยกมาจาก CLAUDE.md หัวข้อ "เปิดเมื่อเกี่ยวข้อง" */
-const ROLE: Record<string, string> = {
-  "HANDOFF.md": "สถานะเครื่อง · ของค้าง · กับดัก — อ่านก่อนเริ่ม session",
-  "CLAUDE.md": "กฎการทำงาน + โปรเจกต์นี้คืออะไร",
-  "ROADMAP-PACKAGE.md": "แผนที่เส้นทางไปสู่ขายเป็น package ต่อโรงงาน",
-  "TICKETS.md": "backlog — ใบถัดไปที่ต้องทำ",
-  "DECISIONS.md": "ตัดสินใจอะไร เพราะอะไร (ADR-lite)",
-  "CHANGELOG.md": "ประวัติงานที่ทำแล้ว",
-  "ARCHITECTURE.md": "ภาพรวม + data flow + ขอบเขต layer",
-  "DEPLOYMENT.md": "ขั้นตอนเอาขึ้น Pi + กับดักที่เจอมาแล้ว",
-  "WORKFLOW.md": "plan → design → tickets → ทำทีละใบ",
-  "AI-GUIDE.md": "พฤติกรรมที่คาดหวังจาก AI",
-  "PUBLISHING-GUIDE.md": "คู่มือ publish สำหรับทีม AI (ฝั่ง edge)",
-  "SNAPSHOT-PROPOSAL.md": "ข้อเสนอเรื่องส่งภาพ snapshot (เคาะแล้ว D-013)",
-  "CALIBRATION-PROPOSAL.md": "ข้อเสนอ calibrate จุดวัดจาก UI (D-017/D-018)",
+/** กลุ่มของเอกสาร — ยึดตาม `docs/WORKFLOW.md` §0 ไม่ได้จัดกลุ่มขึ้นมาใหม่เอง
+ *  ถ้า §0 เปลี่ยน ต้องแก้ตรงนี้ตาม ไม่งั้นเว็บจะสอนคนละอย่างกับเอกสาร */
+const TIER: Record<string, { label: string; hint: string }> = {
+  core: { label: "วนอ่านทุกครั้ง", hint: "3 ไฟล์นี้พอสำหรับรู้ว่าค้างอะไรและทำอะไรต่อ" },
+  ref: { label: "เปิดเมื่อมีคำถาม", hint: "อย่าไล่อ่านตามลำดับ — เปิดเฉพาะตอนสงสัยเรื่องนั้น" },
+  rules: { label: "อ่านครั้งเดียวก็พอ", hint: "กติกาที่ไม่ค่อยเปลี่ยน" },
+  outbound: { label: "เอกสารที่ส่งให้ทีมอื่น", hint: "ฝั่ง edge / ข้อเสนอที่เคาะไปแล้ว" },
+};
+
+type DocMeta = {
+  role: string;
+  tier: keyof typeof TIER;
+  /** ลำดับใน "วนอ่านทุกครั้ง" — ใส่เฉพาะ tier core */
+  step?: number;
+  /** อ่านจบแล้วไปไหนต่อ: [ชื่อไฟล์, เหตุผลว่าทำไมไฟล์นี้ต่อ] */
+  next?: [string, string];
+  /** อ่านเพิ่มเมื่อ...: [ชื่อไฟล์, เปิดตอนสงสัยอะไร] */
+  also?: [string, string][];
+};
+
+const DOCS_META: Record<string, DocMeta> = {
+  "HANDOFF.md": {
+    role: "สถานะเครื่อง · ของค้าง · กับดัก — อ่านก่อนเริ่ม session",
+    tier: "core",
+    step: 1,
+    next: ["ROADMAP-PACKAGE.md", "รู้สถานะแล้ว ดูต่อว่ากำลังเดินไปทางไหน จะได้ไม่หยิบใบที่หลุดทาง"],
+    also: [
+      ["WORKFLOW.md", "ไม่แน่ใจว่าควรหยิบใบไหนก่อน → §0 มีเกณฑ์ 4 ข้อ"],
+      ["DEPLOYMENT.md", "จะ deploy ของที่ค้างขึ้นเครื่องจริง"],
+    ],
+  },
+  "ROADMAP-PACKAGE.md": {
+    role: "ปลายทางที่กำลังเดินไป + อะไรตัดออกนอกขอบเขตแล้ว",
+    tier: "core",
+    step: 2,
+    next: ["TICKETS.md", "รู้ปลายทางแล้ว เปิดใบที่อยู่บนแผนที่นี้ (T-015…T-018)"],
+    also: [["DECISIONS.md", "อยากรู้ว่าทำไมเคาะขอบเขตแบบนี้ → D-020"]],
+  },
+  "TICKETS.md": {
+    role: "backlog — ใบถัดไปที่ต้องทำ",
+    tier: "core",
+    step: 3,
+    next: ["WORKFLOW.md", "ก่อนลงมือ ดูกติกา plan → design → verify แล้วค่อยเปิดใบ"],
+    also: [
+      ["DECISIONS.md", "ใบอ้าง D-0NN แล้วจำไม่ได้ว่าเคาะอะไรไว้"],
+      ["ARCHITECTURE.md", "ไม่รู้ว่าโค้ดที่จะแก้อยู่ตรงไหนของระบบ"],
+    ],
+  },
+  "DECISIONS.md": {
+    role: "ตัดสินใจอะไร เพราะอะไร แลกอะไรไป (ADR-lite)",
+    tier: "ref",
+    next: ["CHANGELOG.md", "รู้ว่าเคาะอะไรไว้แล้ว ดูต่อว่าลงมือจริงแล้วผลออกมายังไง"],
+    also: [["ROADMAP-PACKAGE.md", "อยากเห็นว่าการตัดสินใจนี้อยู่ตรงไหนของเส้นทาง"]],
+  },
+  "CHANGELOG.md": {
+    role: "ทำอะไรไปแล้วบ้าง + verify ยังไง (ใหม่สุดอยู่บน)",
+    tier: "ref",
+    next: ["HANDOFF.md", "ประวัติจบแล้ว กลับไปดูว่าตอนนี้ค้างอะไรอยู่"],
+    also: [["TICKETS.md", "อยากรู้ว่าใบที่ทำไปแล้วเขียน done-when ว่าอะไร"]],
+  },
+  "ARCHITECTURE.md": {
+    role: "ภาพรวม + data flow + ขอบเขต layer",
+    tier: "ref",
+    next: ["DECISIONS.md", "รู้ว่าโครงเป็นแบบไหนแล้ว ดูต่อว่าทำไมถึงเลือกแบบนั้น"],
+    also: [["DEPLOYMENT.md", "จะเอาโครงนี้ขึ้นเครื่องจริง"]],
+  },
+  "DEPLOYMENT.md": {
+    role: "ขั้นตอนเอาขึ้น Pi + กับดักที่เจอมาแล้ว",
+    tier: "ref",
+    next: ["HANDOFF.md", "ดูว่าตอนนี้เครื่องจริงอยู่สถานะไหน มีอะไรค้างรอ deploy"],
+    also: [["ARCHITECTURE.md", "สงสัยว่าชิ้นส่วนที่กำลัง deploy ทำหน้าที่อะไร"]],
+  },
+  "CLAUDE.md": {
+    role: "กฎการทำงาน + โปรเจกต์นี้คืออะไร (โหลดทุก turn)",
+    tier: "rules",
+    next: ["AI-GUIDE.md", "รู้กฎแล้ว ดูต่อว่าคาดหวังพฤติกรรมแบบไหนจาก AI"],
+    also: [["WORKFLOW.md", "จะเริ่มงานที่ใหญ่กว่าแก้บั๊กจุดเดียว"]],
+  },
+  "WORKFLOW.md": {
+    role: "§0 วิธีกลับมาอ่าน + เลือกใบถัดไป · plan → design → tickets → verify",
+    tier: "rules",
+    next: ["TICKETS.md", "รู้กติกาแล้ว เปิดใบถัดไปได้เลย"],
+    also: [["AI-GUIDE.md", "อยากรู้ว่า AI ควรคิด/เสนออะไรก่อนพาลงมือ"]],
+  },
+  "AI-GUIDE.md": {
+    role: "พฤติกรรมที่คาดหวังจาก AI — คิด/เสนอ/เตือน debt ก่อนพาทำ",
+    tier: "rules",
+    next: ["WORKFLOW.md", "รู้ว่าคาดหวังอะไรแล้ว ดูต่อว่ากระบวนการทำงานเป็นยังไง"],
+    also: [["CLAUDE.md", "อยากทวนกฎพื้นฐานของโปรเจกต์นี้"]],
+  },
+  "PUBLISHING-GUIDE.md": {
+    role: "คู่มือ publish สำหรับทีม AI (ฝั่ง edge)",
+    tier: "outbound",
+    next: ["CALIBRATION-PROPOSAL.md", "อีกฉบับที่ส่งให้ทีม AI — เรื่อง calibrate จุดวัด"],
+    also: [["DECISIONS.md", "สัญญาเปลี่ยนเพราะอะไร → D-016 / D-018"]],
+  },
+  "SNAPSHOT-PROPOSAL.md": {
+    role: "ข้อเสนอเรื่องส่งภาพ snapshot (เคาะแล้ว D-013)",
+    tier: "outbound",
+    next: ["CALIBRATION-PROPOSAL.md", "ข้อเสนออีกฉบับที่ต่อยอดจาก pipeline ภาพเดียวกัน"],
+    also: [["DECISIONS.md", "ผลที่เคาะจริง → D-013"]],
+  },
+  "CALIBRATION-PROPOSAL.md": {
+    role: "ข้อเสนอ calibrate จุดวัดจาก UI (D-017 / D-018)",
+    tier: "outbound",
+    next: ["TICKETS.md", "ข้อเสนอนี้กลายเป็นใบ T-013 / T-014 แล้ว"],
+    also: [["DECISIONS.md", "ทำไมเปลี่ยนจาก px เป็นเศษส่วน → D-018"]],
+  },
 };
 
 /** ลำดับที่อยากให้โผล่ในสารบัญ — ที่ไม่อยู่ในนี้ต่อท้ายตามตัวอักษร */
 const ORDER = [
   "HANDOFF.md",
-  "CLAUDE.md",
   "ROADMAP-PACKAGE.md",
   "TICKETS.md",
   "DECISIONS.md",
   "CHANGELOG.md",
   "ARCHITECTURE.md",
   "DEPLOYMENT.md",
+  "CLAUDE.md",
   "WORKFLOW.md",
   "AI-GUIDE.md",
   "PUBLISHING-GUIDE.md",
   "SNAPSHOT-PROPOSAL.md",
   "CALIBRATION-PROPOSAL.md",
 ];
+const TIER_ORDER: (keyof typeof TIER)[] = ["core", "ref", "rules", "outbound"];
 
 // ---------- markdown → html ----------
 
@@ -285,18 +379,45 @@ const fontFaces = [400, 600, 700]
   })
   .join("\n");
 
+const docId = (file: string) => "doc-" + file.replace(/\.md$/, "").toLowerCase();
+
 const docs = found.map((d) => {
   slugSeen = new Set<string>();
-  const id = "doc-" + d.file.replace(/\.md$/, "").toLowerCase();
+  const meta = DOCS_META[d.file];
   return {
-    id,
+    id: docId(d.file),
     file: d.file,
-    role: ROLE[d.file] ?? "",
+    meta,
+    role: meta?.role ?? "",
+    tier: meta?.tier ?? "outbound",
     kb: Math.round(Buffer.byteLength(d.md, "utf8") / 1024),
     html: render(d.md),
-    plain: d.md.toLowerCase(),
   };
 });
+
+const byFile = new Map(docs.map((d) => [d.file, d]));
+
+/** ท้ายเอกสาร: อ่านจบแล้วไปไหนต่อ — ข้อมูลมาจาก DOCS_META ซึ่งยึด WORKFLOW §0 */
+function nextUp(m: DocMeta | undefined): string {
+  if (!m) return "";
+  const cards: string[] = [];
+  if (m.next && byFile.has(m.next[0])) {
+    const [file, why] = m.next;
+    cards.push(`<a class="nu-card nu-primary" href="#${docId(file)}">
+      <span class="nu-kicker">อ่านต่อ</span>
+      <span class="nu-file">${file}</span>
+      <span class="nu-why">${esc(why)}</span></a>`);
+  }
+  for (const [file, why] of m.also ?? []) {
+    if (!byFile.has(file)) continue;
+    cards.push(`<a class="nu-card" href="#${docId(file)}">
+      <span class="nu-kicker">เปิดเมื่อ</span>
+      <span class="nu-file">${file}</span>
+      <span class="nu-why">${esc(why)}</span></a>`);
+  }
+  if (!cards.length) return "";
+  return `<nav class="next-up" aria-label="อ่านต่อ">${cards.join("")}</nav>`;
+}
 
 const generated = new Date().toISOString().slice(0, 10);
 
@@ -357,22 +478,52 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
 .shell button:hover{color:var(--on-shell);border-color:rgba(255,255,255,.3)}
 .shell button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 
-/* กว้างรวม = สารบัญ 262 + ช่องไฟ 26 + คอลัมน์อ่าน 44rem — ตั้งให้พอดี ไม่เหลือที่ว่างลอย ๆ ทางขวา */
-.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 80px;
-  display:grid;grid-template-columns:262px minmax(0,1fr);gap:26px;align-items:start}
-@media (max-width:900px){.wrap{grid-template-columns:1fr;gap:16px}}
+/* คอลัมน์อ่านอยู่กลางจอ ได้พื้นที่เต็ม — สารบัญเป็นแผงลอยที่ซ่อนไว้ ไม่กินที่อ่านตลอดเวลา */
+.wrap{padding:30px 24px 96px;display:flex;justify-content:center}
 
-/* สารบัญ — บล็อกสี ไม่มีขอบไม่มีเงา */
-.rail{background:var(--surface);border-radius:var(--r-sm);padding:14px;
-  position:sticky;top:62px;max-height:calc(100vh - 84px);overflow-y:auto}
-@media (max-width:900px){.rail{position:static;max-height:none}}
-.rail h2{margin:0 0 10px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+/* โซนเรียกสารบัญ: แถบบางที่ขอบซ้าย เอาเมาส์ไปแตะแล้วแผงเลื่อนออกมา
+   ⚠️ hover อย่างเดียวไม่พอ — จอสัมผัสกับคีย์บอร์ดไม่มี hover จึงต้องมีปุ่มในแถบบนคู่กันเสมอ */
+#navzone{position:fixed;left:0;top:50px;bottom:0;width:22px;z-index:30}
+#navzone:focus-within{width:326px}
+body.nav-open #navzone{width:326px}
+/* เปิดด้วยการเอาเมาส์มาแตะ เฉพาะเครื่องที่มีเมาส์จริง — บนจอสัมผัส hover คือการแตะค้าง
+   ซึ่งจะทำให้แผงเด้งตอนคนตั้งใจจะ scroll ; เครื่องพวกนั้นใช้ปุ่มในแถบบนแทน */
+@media (hover:hover) and (pointer:fine){
+  #navzone:hover{width:326px}
+}
+.edge{position:absolute;inset:0 auto 0 0;width:22px;transition:opacity .2s ease;
+  background:linear-gradient(90deg,var(--panel-hi),transparent)}
+/* ขีดจับ — บอกว่าตรงนี้มีของซ่อนอยู่ ไม่งั้นไม่มีใครรู้ว่าต้องเอาเมาส์มาแตะ */
+.edge::after{content:"";position:absolute;left:6px;top:50%;margin-top:-28px;
+  width:3px;height:56px;border-radius:var(--r-pill);background:var(--line)}
+#navzone:focus-within .edge,body.nav-open .edge{opacity:0}
+
+.rail{position:absolute;left:0;top:0;bottom:0;width:304px;overflow-y:auto;
+  background:var(--surface);border-right:1px solid var(--line-soft);padding:16px 15px 28px;
+  transform:translateX(-105%);transition:transform .2s ease}
+#navzone:focus-within .rail,body.nav-open .rail{transform:none}
+@media (hover:hover) and (pointer:fine){
+  #navzone:hover .edge{opacity:0}
+  #navzone:hover .rail{transform:none}
+}
+
+.nav-group{margin:0 0 20px}
+.nav-group>h2{margin:0 0 2px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
   color:var(--muted);font-weight:600}
+.g-hint{margin:0 0 9px;font-size:12px;line-height:1.6;color:var(--muted)}
+.rail>h2{margin:0 0 10px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);font-weight:600}
+/* ตัวเลขบนกลุ่มแรก = ลำดับการอ่านจริงตาม WORKFLOW §0 ไม่ใช่เลขประดับ */
+.step{display:inline-flex;align-items:center;justify-content:center;
+  width:17px;height:17px;margin-right:7px;border-radius:var(--r-pill);
+  background:var(--primary);color:#fff;font-size:10.5px;font-weight:700;
+  font-family:var(--mono);vertical-align:1px}
 #q{width:100%;font:inherit;font-size:14.5px;padding:9px 11px;margin-bottom:14px;
   background:var(--panel);color:var(--text);
   border:1px solid var(--line-soft);border-radius:var(--r-sm)}
 #q:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
 .rail ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+@media (max-width:900px){.rail{width:min(88vw,304px)}}
 .rail a{display:block;padding:9px 10px;border-radius:var(--r-sm);
   color:var(--text);text-decoration:none;font-size:14px}
 .rail a:hover{background:var(--panel-hi)}
@@ -388,9 +539,29 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
 /* เนื้อเอกสาร */
 /* ความกว้างคุมด้วย rem ไม่ใช่ ch — หน่วย ch อิงความกว้างเลขศูนย์ ซึ่งไม่สะท้อนอักษรไทย
    ที่หนาแน่นกว่า ; 78ch จึงกลายเป็นบรรทัดยาวจริงราว 90 ตัวอักษรไทย ซึ่งเกินที่ตาไล่ทัน */
-.doc{background:var(--surface);border-radius:var(--r-sm);padding:32px 38px;
-  max-width:44rem;line-height:1.95;overflow-wrap:break-word}
-@media (max-width:640px){.doc{padding:20px 17px;line-height:1.9}}
+.doc{background:var(--surface);border-radius:var(--r-sm);padding:34px 44px 40px;
+  width:100%;max-width:46rem;line-height:1.95;overflow-wrap:break-word}
+@media (max-width:640px){.doc{padding:20px 17px 28px;line-height:1.9}}
+
+/* ท้ายเอกสาร: อ่านจบแล้วไปไหนต่อ — ใบแรกคือเส้นทางหลัก ที่เหลือคือ "เปิดเมื่อสงสัยเรื่องนี้" */
+.next-up{display:grid;gap:10px;margin-top:44px;padding-top:24px;
+  border-top:1px solid var(--line-soft)}
+@media (min-width:700px){.next-up{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}}
+.nu-card{display:flex;flex-direction:column;gap:1px;padding:13px 15px;
+  background:var(--panel-hi);border-radius:var(--r-sm);
+  text-decoration:none;color:var(--text)}
+.nu-card:hover{background:var(--panel)}
+.nu-card:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.nu-primary{box-shadow:inset 3px 0 0 var(--primary)}
+.nu-kicker{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-weight:600}
+.nu-file{font-family:var(--mono);font-size:13.5px;margin-bottom:2px}
+.nu-why{font-size:13px;line-height:1.7;color:var(--muted)}
+
+#backdrop{position:fixed;inset:0;z-index:25;background:rgba(0,0,0,.4);
+  opacity:0;pointer-events:none;transition:opacity .2s ease}
+body.nav-open #backdrop{opacity:1;pointer-events:auto}
+@media (min-width:901px){#backdrop{display:none}}
 .doc-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
   padding-bottom:14px;border-bottom:1px solid var(--line-soft);line-height:1.7}
 .doc-head .f{font-family:var(--mono);font-size:13.5px;color:var(--muted)}
@@ -445,41 +616,59 @@ th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut
   border-radius:var(--r-sm);color:var(--muted);font-size:14px;line-height:1.85}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-@media print{.shell,.rail{display:none}.wrap{display:block;max-width:none;padding:0}
+@media print{.shell,#navzone,#backdrop,.next-up{display:none}
+  .wrap{display:block;max-width:none;padding:0}
   .doc{background:none;padding:0;max-width:none}[hidden]{display:none!important}}
 </style>
 
 <header class="shell">
   <div class="shell-in">
+    <button id="menu" type="button" aria-expanded="false" aria-controls="rail">☰ เอกสาร</button>
     <span class="brand">Meter</span>
     <span class="shell-sub">เอกสารทั้งชุด · รวมจากไฟล์ .md ต้นฉบับเมื่อ ${generated}</span>
     <button id="theme" type="button">สลับธีม</button>
   </div>
 </header>
 
-<div class="wrap">
-  <nav class="rail" aria-label="สารบัญเอกสาร">
-    <h2>เอกสาร</h2>
+<div id="backdrop"></div>
+
+<div id="navzone">
+  <div class="edge" aria-hidden="true"></div>
+  <nav class="rail" id="rail" aria-label="สารบัญเอกสาร">
     <input id="q" type="search" placeholder="ค้นหาในทุกไฟล์…" autocomplete="off">
-    <ul id="toc">
-      ${docs
+    <div id="toc">
+      ${TIER_ORDER.filter((t) => docs.some((d) => d.tier === t))
         .map(
-          (d, n) =>
-            `<li data-doc="${d.id}"><a href="#${d.id}" ${n === 0 ? 'aria-current="true"' : ""}>
-        <span class="r-kb">${d.kb}KB</span><span class="r-name">${d.file}</span>
-        <span class="r-role">${esc(d.role)}</span></a></li>`,
+          (t) => `<section class="nav-group">
+        <h2>${TIER[t]!.label}</h2>
+        <p class="g-hint">${esc(TIER[t]!.hint)}</p>
+        <ul>
+          ${docs
+            .filter((d) => d.tier === t)
+            .map(
+              (d) => `<li data-doc="${d.id}"><a href="#${d.id}"${d.id === docs[0]!.id ? ' aria-current="true"' : ""}>
+            <span class="r-kb">${d.kb}KB</span>
+            <span class="r-name">${d.meta?.step ? `<span class="step">${d.meta.step}</span>` : ""}${d.file}</span>
+            <span class="r-role">${esc(d.role)}</span></a></li>`,
+            )
+            .join("\n          ")}
+        </ul>
+      </section>`,
         )
         .join("\n      ")}
-    </ul>
+    </div>
     <p class="empty" id="nohit" hidden>ไม่พบคำนี้ในไฟล์ไหนเลย</p>
   </nav>
+</div>
 
+<div class="wrap">
   <main>
     ${docs
       .map(
         (d, n) => `<article class="doc" id="${d.id}"${n === 0 ? "" : " hidden"}>
       <div class="doc-head"><span class="f">${d.file}</span><span class="role">${esc(d.role)}</span></div>
       ${d.html}
+      ${nextUp(d.meta)}
     </article>`,
       )
       .join("\n    ")}
@@ -493,24 +682,23 @@ const INDEX = [...document.querySelectorAll("article.doc")]
 const toc = document.getElementById("toc");
 const q = document.getElementById("q");
 const nohit = document.getElementById("nohit");
+const menu = document.getElementById("menu");
 
+function closeNav(){
+  document.body.classList.remove("nav-open");
+  menu.setAttribute("aria-expanded", "false");
+}
 function show(id){
   for (const a of document.querySelectorAll("article.doc")) a.hidden = a.id !== id;
   for (const a of toc.querySelectorAll("a")) a.setAttribute("aria-current", String(a.hash === "#" + id));
+  closeNav();
   window.scrollTo({ top: 0 });
 }
-toc.addEventListener("click", (e) => {
-  const a = e.target.closest("a");
-  if (!a) return;
-  e.preventDefault();
-  show(a.hash.slice(1));
-  history.replaceState(null, "", a.hash);
-});
-if (location.hash && document.getElementById(location.hash.slice(1))) show(location.hash.slice(1));
 
-// ลิงก์ข้ามไฟล์ในเนื้อเอกสาร — สลับไฟล์แทนการกระโดด anchor เปล่า
+// ลิงก์ไปเอกสารอื่นมี 3 ที่: สารบัญ · ลิงก์ข้ามไฟล์ในเนื้อความ · การ์ด "อ่านต่อ" ท้ายหน้า
+// ทั้งหมดชี้ #doc-* เหมือนกัน จึงดักที่เดียวจบ
 document.addEventListener("click", (e) => {
-  const a = e.target.closest("a.xdoc");
+  const a = e.target.closest('a[href^="#doc-"]');
   if (!a) return;
   const id = a.hash.slice(1);
   if (!document.getElementById(id)) return;
@@ -518,18 +706,30 @@ document.addEventListener("click", (e) => {
   show(id);
   history.replaceState(null, "", a.hash);
 });
+if (location.hash && document.getElementById(location.hash.slice(1))) show(location.hash.slice(1));
 
 q.addEventListener("input", () => {
   const term = q.value.trim().toLowerCase();
   let hits = 0;
-  for (const li of toc.children) {
+  for (const li of toc.querySelectorAll("li[data-doc]")) {
     const rec = INDEX.find((r) => r.id === li.dataset.doc);
     const hit = !term || (rec && rec.t.includes(term));
     li.hidden = !hit;
     if (hit) hits++;
   }
+  // ซ่อนหัวกลุ่มที่ไม่เหลือไฟล์แล้ว ไม่งั้นจะเห็นหัวข้อลอยไม่มีอะไรอยู่ข้างใต้
+  for (const g of toc.querySelectorAll(".nav-group"))
+    g.hidden = ![...g.querySelectorAll("li[data-doc]")].some((li) => !li.hidden);
   nohit.hidden = hits > 0;
 });
+
+menu.addEventListener("click", () => {
+  const open = document.body.classList.toggle("nav-open");
+  menu.setAttribute("aria-expanded", String(open));
+  if (open) q.focus();
+});
+document.getElementById("backdrop").addEventListener("click", closeNav);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeNav(); });
 
 document.getElementById("theme").addEventListener("click", () => {
   const dark = matchMedia("(prefers-color-scheme: dark)").matches;
