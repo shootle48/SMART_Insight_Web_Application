@@ -20,3 +20,4 @@ Thumbs.db
 # Pi ต้อง pull repo นี้ทุกครั้งที่ deploy จึงไม่ควรลากไฟล์รายงานติดไปด้วย ไม่ได้ใช้ตอนรัน
 # ตัวรายงานเผยแพร่เป็น artifact แทน (ลิงก์อยู่ใน CHANGELOG) ; สร้างใหม่ได้เสมอจากการรันเทสซ้ำ
 docs/TEST-EVIDENCE-*.html
+docs/INTEGRATION-MQTT-*.html

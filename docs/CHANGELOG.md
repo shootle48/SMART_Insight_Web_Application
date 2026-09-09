@@ -29,6 +29,25 @@
 
 ---
 
+## docs: รายงาน integration test ของ MQTT (UI ↔ edge)  🟢
+- ผู้ใช้ต้องการเอกสารสรุป topic/รูปแบบข้อมูลที่ UI กับ edge คุยกันผ่าน MQTT
+  → เผยแพร่เป็น artifact: https://claude.ai/code/artifact/dfad4f04-06c6-4c4a-bfce-7567114c40b2
+- **ดักข้อความจริงจาก broker** ด้วย `mosquitto_sub -t 'meter/#' -v` ขณะ `mock-edge-publisher`
+  ทำงานอยู่ (ไม่ใช่ตัวอย่างที่พิมพ์ขึ้นเอง) ครบทั้ง 6 topic: `meter_frame`/`device_heartbeat`/
+  `device_status` (edge→server, 3 ระดับ), `evidence/.../.../` (edge→server, 6 ระดับ, binary),
+  `command/snap-for-calibration`/`config/<point_id>` (server→edge, ยิงผ่าน API จริงของหน้าเว็บ)
+- พิสูจน์ evidence round-trip ครบวงจร: publish ภาพจริง → broker → ingest → เขียนดิสก์ → เสิร์ฟกลับ
+  ผ่าน API แล้วเทียบไบต์ (`cmp`) ตรงกับไฟล์ต้นทาง 100%
+- พิสูจน์พฤติกรรม retain ของ `config/<point_id>` โดยตรง — subscribe แล้วได้ค่าเดิมทันที (retained)
+  จากนั้น PATCH แล้วเห็นค่าใหม่มาแทนที่ทันที ; ทดสอบเสร็จ **คืนค่า fixture 4 จุดเดิมกลับ**
+  ให้ `pt-a-boiler-pressure` ไม่ให้ข้อมูลทดสอบเปื้อนของจริง
+- ⚠️ ระบุขอบเขตชัดเจน: ทดสอบกับ mock-edge-publisher ไม่ใช่โค้ด edge จริงของทีม AI — พิสูจน์ได้แค่ว่า
+  server publish/subscribe ถูก topic/payload ตามสัญญา ยังไม่ได้พิสูจน์ว่าเครื่องจริงรับ 2 topic
+  ฝั่ง server→edge ถูกด้วย ต้องให้ทีม AI ยืนยันเอง
+- ไฟล์รายงาน (`docs/INTEGRATION-MQTT-*.html`) ไม่ track เหมือน TEST-EVIDENCE — เหตุผลเดียวกัน
+
+---
+
 ## docs: รายงานหลักฐานการทดสอบ (HTML) สำหรับส่งทีม  🟢
 - ผู้ใช้ต้องการเอกสารไว้แคปส่งทีมว่าระบบถูกทดสอบให้ทนอะไรไว้บ้าง
   → เผยแพร่เป็น artifact: https://claude.ai/code/artifact/7a686aa6-26da-4f19-afa9-9bdbbaf1897d
