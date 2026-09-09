@@ -1,6 +1,6 @@
 # HANDOFF — Meter (อ่านก่อนเริ่ม session ใหม่)
 
-> อัปเดตล่าสุด **2026-08-28**
+> อัปเดตล่าสุด **2026-09-09**
 >
 > ไฟล์นี้เก็บเฉพาะของที่ไฟล์อื่นไม่มี: **สถานะเครื่อง ณ ตอนนี้ · ของค้างกลางมือ ·
 > คำถามค้างกับทีม AI · กับดักที่เจอมาแล้ว**
@@ -52,6 +52,55 @@
 ดีไซน์ปัจจุบันของ Meter + เหตุผลเต็ม → `docs/DECISIONS.md` D-019 · หัวไฟล์ `src/web/styles.css`
 
 ---
+
+## สถานะ ณ 2026-09-09 (ล่าสุด — ย้าย session เพราะ context เต็ม)
+
+### 🔴 ยังไม่ได้ deploy ขึ้น Pi เลยตั้งแต่ `af3ffa6`
+มี 14 commit ค้างอยู่ในนี้ที่ Pi ยังไม่มี รวมของสำคัญที่ผู้ใช้เจอเองหน้างาน:
+- **แก้ภาพ evidence ช้ากว่าค่า 1 เฟรมเสมอ** (`7b465c1`) — ผู้ใช้รายงานปัญหานี้จากการใช้งานจริง
+  ยังไม่ verify ได้ว่าหายบน Pi เพราะยังไม่ deploy
+- **redesign UI ทั้งจอ** (`acb9f73`) — dark shell + warm light, การ์ดเหลี่ยมไม่มีขอบ/เงา
+- **T-013/T-014 calibrate จาก UI** (`98ea323`..`59b1975`) — publish MQTT ไป edge จริงได้แล้ว
+  ทีม AI **ยืนยันแล้วว่าเครื่องจริง sub ได้ปกติ** ทั้ง `command/snap-for-calibration` และ
+  `config/<point_id>` (ดู `docs/INTEGRATION-MQTT-2026-09-09.html` ที่ publish เป็น artifact)
+- **polish** (`104162f`) — transition ทั้งจอ, ฟอนต์ไทย self-host ไม่มีหัว (แก้ bug ที่ fallback
+  เป็น Leelawadee UI มีหัวเพราะไม่เคยโหลด Noto Sans Thai จริง), ปิดแผง detail แตะนอกได้
+
+คำสั่ง deploy เดิม (ดู `docs/DEPLOYMENT.md:157`):
+```
+cd ~/Meter && git pull && bun install && bun run db:migrate && bun run build && sudo systemctl restart meter
+```
+
+### git ยังไม่ได้ push 1 commit
+`origin/main` อยู่ที่ `f09a58c` ส่วน local คือ `1f06f27` (docs: จดผล integration test MQTT)
+— ไม่มีอะไรเสียหายถ้ายังไม่ push แค่ยังไม่ขึ้น remote
+
+### รายงานเทส 2 ฉบับ — publish เป็น artifact ไม่ได้ commit เข้า repo
+ทั้งสองไฟล์อยู่ใน `.gitignore` แล้ว (`docs/TEST-EVIDENCE-*.html`, `docs/INTEGRATION-MQTT-*.html`)
+เพราะหนัก (~1MB, ฝังภาพเป็น data URI) และ Pi ไม่ต้องใช้ — ตัวไฟล์ยังอยู่บนดิสก์เผื่อรีเจน:
+- `docs/TEST-EVIDENCE-2026-09-08.html` — 18 เคสป้องกัน (validation/security/บริการดับ) ครบ
+  7 ภาพหน้าจอจริง
+- `docs/INTEGRATION-MQTT-2026-09-09.html` — 6 MQTT topic ระหว่าง UI↔edge พร้อม payload จริง
+  ที่ดักจาก `mosquitto_sub` ; ทั้งคู่มีปุ่ม export ในตัว (ดาวน์โหลด .html ผ่าน `downloads`
+  capability + ปุ่มพิมพ์/PDF) ถ้าจะรีเจน PDF ใหม่ ใช้ playwright-core (`chromium.launch({channel:
+  "msedge"})` แล้ว `page.pdf({preferCSSPageSize:true, printBackground:true})` หลัง
+  `page.emulateMedia({media:"print"})`) — วิธีนี้ผ่านมาแล้วทั้งสองรอบ
+
+### dev stack ยังรันอยู่ตอนจบ session (ไม่ได้ปิด)
+Docker (`meter-mqtt`, `meter-postgres`) + `bun run dev:all` (api :3000, web :5173, mock ยิงทุก 5วิ)
+ยังขึ้นอยู่ — เปิด session ใหม่แล้วเจอ "port ถูกใช้อยู่" ให้เช็คว่านี่คือของเดิมที่ยังไม่ปิด
+(ไม่ใช่ต้อง kill ก่อนเสมอไป ใช้ต่อได้เลยถ้ายังต้องการ)
+
+⚠️ **ระหว่างทดสอบ integration MQTT มีการ PATCH fixture ของ `pt-a-boiler-pressure` ชั่วคราว
+(เหลือ 2 จุด calibration) แล้วคืนค่ากลับเป็น 4 จุดเดิมแล้ว** — เช็คแล้วว่า DB ตรงกับก่อนทดสอบ
+
+### ของค้าง (ไม่เร่ง แต่ยังไม่ได้ทำ)
+- T-014 ส่วน SEVEN_SEGMENT (ลากกรอบ bbox แทนคลิกจุด) ยังไม่ได้ทำ
+- WATER_METER ยังไม่มี fixture schema ของตัวเอง
+- Evidence retention policy (T-011) ยังไม่ทำ — นโยบายปัจจุบันคือเก็บไม่มีวันลบ
+- `evidenceIngestStats()` ยังไม่ได้ต่อเข้า `/api/health`
+- `message_size_limit` ใน `mosquitto.conf` ยังไม่ตั้ง
+- `pt-a-run-lamp` ใน `dev-inventory.ts` — ผู้ใช้ยืนยันแล้วว่าไม่ใช่ของจริง แต่ยังไม่ได้ลบออก
 
 ## สถานะ ณ 2026-09-03
 
