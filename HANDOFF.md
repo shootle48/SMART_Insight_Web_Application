@@ -111,15 +111,15 @@
 
 ### ✅ Pi ตามทันแล้ว — ไม่มีโค้ดค้างรอ deploy
 ผู้ใช้ยืนยัน 2026-09-09 ว่า deploy แล้วและ **verify ว่าบั๊กภาพช้า 1 เฟรมหายจริงบนเครื่อง**
-Pi อยู่ราว ๆ `f09a58c` (= push ล่าสุดบน origin) ซึ่ง**ใหม่กว่า** `104162f` จึงมีครบทั้ง
-fix ภาพ evidence · redesign UI · polish ฟอนต์ไทย · T-013/T-014 calibrate
 
-🔴 **แต่ local ล้ำ `origin/main` อยู่ 6 commit ที่ยังไม่ push** — `1f06f27` `4a9da0d`
-`ade3f1b` `ae28eec` `ad8ad0d` `d0136ce` ; **ทั้ง 6 เป็น docs/tooling ล้วน ไม่มีโค้ดที่รันจริง**
+**Pi อยู่ที่ `f09a58c` เป๊ะ** (ตรวจจาก `git log` บนเครื่องจริง = `origin/main` พอดี ไม่มี local
+change ค้างบนนั้น) ซึ่ง**ใหม่กว่า** `104162f` จึงมีครบทั้ง fix ภาพ evidence · redesign UI (D-019)
+· polish ฟอนต์ไทย · T-013/T-014 calibrate
+
+🔴 **local ล้ำ `origin/main` อยู่ 7 commit ที่ยังไม่ push** — `1f06f27` `4a9da0d` `ade3f1b`
+`ae28eec` `ad8ad0d` `d0136ce` `fa91965` ; **ทั้งหมดเป็น docs/tooling ล้วน ไม่มีโค้ดที่รันจริง**
 Pi จึงไม่ได้ขาดอะไรที่มีผลต่อการทำงาน — push เมื่อไหร่ก็ได้ ไม่เร่ง
-
-⚠️ ยังไม่ได้จด hash ที่ Pi อยู่จริง — ถ้าอยากให้แม่น รันบน Pi: `cd ~/Meter && git log --oneline -1`
-แล้วมาแทนที่บรรทัดข้างบน (ตอนนี้อ้างจากคำบอกเล่าว่า "แทบใกล้เคียง push ล่าสุด")
+(ถ้า push แล้ว Pi `git pull` จะได้แค่เอกสาร ไม่ต้อง `bun run build` / restart service ซ้ำ)
 
 ## สถานะ ณ 2026-09-09 เช้า (ย้าย session เพราะ context เต็ม)
 
