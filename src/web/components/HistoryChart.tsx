@@ -25,7 +25,25 @@ export function HistoryChart({ buckets, unit }: Props) {
 
   const withValue = buckets.filter((b) => b.avg_value !== null);
   if (withValue.length < 2) {
-    return <div className="hc-empty">ยังไม่มีข้อมูลพอวาดกราฟในช่วงนี้</div>;
+    // แยก 3 กรณีให้ตรงความจริง — ของเดิมพูดว่า "ไม่มีข้อมูลพอ" เหมือนกันหมด ซึ่งหลอกคนอ่าน
+    // ในกรณีที่ 2: จุดนั้นมีข้อมูลเต็มแต่เป็นข้อความที่แปลงเป็นเลขไม่ได้ จึงวาดเส้นไม่ได้
+    // คนละเรื่องกับ "ยังไม่มีข้อมูล" ซึ่งทำให้ไปตามหาสาเหตุผิดทาง (T-023)
+    const lastText = [...buckets].reverse().find((b) => b.last_text !== null)?.last_text ?? null;
+    const samples = buckets.reduce((n, b) => n + b.samples, 0);
+
+    if (samples === 0) {
+      return <div className="hc-empty">ยังไม่มีข้อมูลในช่วงเวลานี้</div>;
+    }
+    if (lastText !== null) {
+      return (
+        <div className="hc-empty hc-empty-text">
+          <span>จุดนี้อ่านค่าเป็นข้อความ วาดกราฟเส้นไม่ได้</span>
+          <strong>ล่าสุด: {lastText}</strong>
+          <span className="hc-empty-sub">{samples} ครั้งในช่วงนี้</span>
+        </div>
+      );
+    }
+    return <div className="hc-empty">มีข้อมูล {samples} ครั้ง แต่ยังน้อยเกินกว่าจะวาดเส้น</div>;
   }
 
   const lows = withValue.map((b) => b.min_value ?? b.avg_value!);

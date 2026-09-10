@@ -219,19 +219,40 @@ pointsApi.get("/:pointId/history", async (c) => {
   // เล็งไว้ ~240 จุดต่อกราฟ กำลังพอดีกับความกว้างจอ ไม่ละเอียดเกินจนเปลืองแบนด์วิดท์
   const bucketSec = Math.max(1, Math.floor(rangeSec / 240));
 
+  // 🔴 ค่าที่ edge ส่งมาเป็น **ข้อความ** ต้องถูกนับรวมด้วยถ้าหน้าตาเป็นตัวเลข (T-023)
+  // ของจริง: SEVEN_SEGMENT กับ WATER_METER ของทีม AI ส่งเลขนับมาในช่อง `value_text`
+  // (ดู D-016) ทำให้ avg/min/max ที่อ่านแต่ `value_num` ได้ null ทุก bucket → กราฟไม่ขึ้นเลย
+  // ทั้งที่มีข้อมูลเต็ม ; ต้นตออยู่ที่ edge ส่งผิดช่อง แต่ edge อยู่นอกขอบเขตเรา (D-020)
+  // จึงรับมือฝั่งเรา — และทำที่ SQL เพราะ **ข้อมูลเก่าที่เก็บไว้แล้วขึ้นกราฟได้ทันที**
+  // ไม่ต้องรอข้อมูลใหม่สะสม
+  //
+  // ⚠️ regex จงใจไม่ใช้ `\s` / `\.` เพราะ template literal ของ JS จะกลืน backslash
+  // ทำให้ pattern เพี้ยนเงียบ ๆ — ใช้ btrim() กับ [.] แทน ปลอดภัยกว่าและอ่านง่ายกว่า
   const rows = await db.execute(sql`
+    WITH r AS (
+      SELECT
+        captured_at,
+        quality,
+        value_text,
+        COALESCE(
+          value_num,
+          CASE WHEN btrim(value_text) ~ '^-?[0-9]+([.][0-9]+)?$'
+               THEN btrim(value_text)::numeric END
+        ) AS num
+      FROM readings
+      WHERE point_id = ${pointId}
+        AND captured_at >= now() - make_interval(secs => ${rangeSec})
+    )
     SELECT
       to_timestamp(floor(extract(epoch FROM captured_at) / ${bucketSec}) * ${bucketSec}) AS bucket,
       count(*)::int AS samples,
       count(*) FILTER (WHERE quality = 'UNREADABLE')::int AS unreadable,
       count(*) FILTER (WHERE quality = 'UNCERTAIN')::int AS uncertain,
-      avg(value_num) AS avg_value,
-      min(value_num) AS min_value,
-      max(value_num) AS max_value,
+      avg(num) AS avg_value,
+      min(num) AS min_value,
+      max(num) AS max_value,
       (array_agg(value_text ORDER BY captured_at DESC) FILTER (WHERE value_text IS NOT NULL))[1] AS last_text
-    FROM readings
-    WHERE point_id = ${pointId}
-      AND captured_at >= now() - make_interval(secs => ${rangeSec})
+    FROM r
     GROUP BY 1
     ORDER BY 1
   `);

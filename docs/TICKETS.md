@@ -219,6 +219,27 @@ note:       ทำหลัง core เดินครบ (T-001..T-007) — บ
 
 # Archive (done — ใหม่สุดอยู่บน)
 
+## T-023 [P1] กราฟย้อนหลังไม่ขึ้นสำหรับ 7SEG/WATER_METER — done
+why:        ผู้ใช้เจอบนเครื่องจริง: ค่าปัจจุบันขึ้นปกติ แต่กราฟขึ้นข้อความ "ยังไม่มีข้อมูลพอ
+            วาดกราฟในช่วงนี้" เฉพาะ SEVEN_SEGMENT กับ WATER_METER (GAUGE ปกติ)
+            ⇒ สองชนิดนี้ edge ส่ง**เลขนับมาในช่อง `value_text`** (D-016) ทำให้
+            `avg(value_num)` เป็น null ทุก bucket ; ต้นตออยู่ที่ edge ส่งผิดช่อง แต่ edge
+            อยู่นอกขอบเขตเรา (D-020) จึงรับมือฝั่งเรา
+scope:      (ก) `api/points.ts` history — cast `value_text` ที่หน้าตาเป็นตัวเลขมารวมด้วย
+            (ข) `ingest/normalize.ts` + `ingest/index.ts` — เติม `value_num` ตอนรับเข้า
+            (ค) `HistoryChart.tsx` — แยกข้อความให้ตรงความจริง 3 กรณี
+done-when:  จุด 7SEG ที่ส่งค่าเป็นข้อความขึ้นกราฟได้ · ค่าที่เป็นคำจริง ๆ ไม่ถูก cast มั่ว
+files:      src/server/api/points.ts · src/server/ingest/{normalize,index}.ts ·
+            src/web/components/HistoryChart.tsx · src/web/styles.css
+done: 2026-09-10 ทำทั้ง (ก)+(ข) ตามที่ผู้ใช้เคาะ — **(ก) ทำให้ข้อมูลเก่าที่เก็บไว้แล้วขึ้นกราฟ
+      ทันที** ไม่ต้องรอข้อมูลใหม่ ส่วน **(ข) ได้ deadband throttle กลับมาด้วย** ซึ่งจุดพวกนี้
+      ไม่เคยโดนบีบเลยเพราะ deadband เทียบด้วยตัวเลข
+      ; verify ด้วยข้อมูลจริงที่ยิงผ่าน MQTT: `"['9dot875']"` → เก็บเป็น `9.875` + เติม
+      `value_num` ให้ · `"ERR"` ยังเป็นข้อความ `value_num` ว่าง ไม่ได้เลขมั่ว · `invalid` คง 0
+      · history คืน `avg_value` เป็นเลขจริงจากค่าที่อยู่ในช่องข้อความ · SVG วาดติดบนหน้าเว็บ
+      ⚠️ regex ฝั่ง SQL กับฝั่ง TS **ต้องตรงกันเป๊ะ** ไม่งั้นข้อมูลก่อน/หลัง deploy จะถูกนับ
+      คนละแบบ แล้วกราฟจะมีรอยต่อแปลกตรงวันที่ deploy — เขียนเตือนไว้ในทั้งสองไฟล์แล้ว
+
 ## T-021 [P2] ปุ่มหลักในฟอร์มไม่เคยได้สีส้มจริง — specificity ชนกัน — done
 why:        เจอระหว่างทำ T-019 — `.d-cfg-save` ตั้ง `background: var(--primary)` ไว้ แต่
             `.d-cfg-actions button` มี specificity สูงกว่า **(0,1,1) > (0,1,0)** จึงชนะเสมอ

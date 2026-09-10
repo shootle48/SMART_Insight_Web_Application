@@ -21,7 +21,7 @@ import {
 } from "../../contract";
 import { liveEvents, type LiveReading } from "../events";
 import { shouldStore, markStored, throttleConfig } from "./throttle";
-import { cleanRawText } from "./normalize";
+import { cleanRawText, numericFromText } from "./normalize";
 import { handleEvidence, ensureEvidenceDir } from "./evidence";
 
 const BROKER_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
@@ -117,7 +117,13 @@ async function handleFrame(frame: MeterFrameMessage) {
   // ก่อน throttle/insert/ส่งขึ้นจอสด เพื่อให้ทุกที่เห็นค่าเดียวกันที่ format นิ่งแล้ว
   frame = {
     ...frame,
-    readings: frame.readings.map((r) => (r.value_text !== null ? { ...r, value_text: cleanRawText(r.value_text) } : r)),
+    readings: frame.readings.map((r) => {
+      if (r.value_text === null) return r;
+      const value_text = cleanRawText(r.value_text);
+      // เติม `value_num` ให้เองเมื่อข้อความเป็นตัวเลขล้วน (T-023) — edge บางตัวส่งเลขมาใน
+      // ช่องข้อความ ทำให้กราฟวาดไม่ได้และ deadband ไม่ทำงาน ; ไม่ทับของที่ edge ส่งมาเอง
+      return { ...r, value_text, value_num: r.value_num ?? numericFromText(value_text) };
+    }),
   };
 
   await ensureDevice(frame.device_id);

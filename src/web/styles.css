@@ -892,6 +892,11 @@ body, .card, .card-rail, .dev, .devicebar .dev-dot, .detail, .d-cfg, .d-hero,
 /* แถบช่วงที่อ่านไม่ออก — ความเข้มบอกสัดส่วน ตั้งเป็น inline style ใน component */
 .hc-unreadable { fill: var(--uncertain); }
 .hc-empty { height: 150px; display: flex; align-items: center; justify-content: center; color: var(--dim); font-size: 13px; }
+/* กรณี "อ่านค่าเป็นข้อความ" มีของให้อ่านจริง จึงจัดเป็น 3 บรรทัดแทนข้อความบรรทัดเดียว
+   ค่าล่าสุดเป็นของหลักของกล่องนี้ ต้องเด่นกว่าคำอธิบายรอบตัว */
+.hc-empty-text { flex-direction: column; gap: 4px; text-align: center; }
+.hc-empty-text strong { font-family: var(--mono); font-size: 22px; color: var(--text); font-weight: 700; }
+.hc-empty-sub { font-size: 11.5px; }
 
 .d-err { margin: 8px 0; padding: 10px 12px; border-radius: var(--r-md); background: color-mix(in srgb, var(--bad) 8%, transparent); color: var(--bad); font-size: 13px; }
 .d-snap { border: 1px dashed var(--line); border-radius: var(--r-md); padding: 14px; text-align: center; color: var(--dim); font-size: 13px; }

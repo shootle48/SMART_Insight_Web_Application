@@ -32,3 +32,24 @@ export function cleanRawText(raw: string): string {
   if (items.length === 0) return raw; // แกะไม่ได้เลย เก็บของเดิมไว้ดีกว่าเก็บสตริงว่าง
   return items.join(" / ");
 }
+
+/**
+ * ถ้าข้อความที่ทำความสะอาดแล้ว "เป็นตัวเลขล้วน" คืนเป็น number ไม่งั้นคืน null
+ *
+ * ทำไมต้องมี (T-023): SEVEN_SEGMENT กับ WATER_METER ของทีม AI ส่ง**เลขนับมาในช่อง
+ * `value_text`** (ดู D-016) ทำให้ `value_num` เป็น null ทุกแถว ผลคือ
+ *   - กราฟย้อนหลังวาดไม่ได้เลย (avg/min/max อ่านแต่ `value_num`)
+ *   - **deadband ของ throttle ไม่ทำงาน** เพราะมันเทียบด้วยตัวเลข → เก็บทุกเฟรมเท่าที่
+ *     เพดานอัตราอนุญาต ทั้งที่ค่าไม่ได้ขยับ
+ * ต้นตออยู่ที่ edge ส่งผิดช่อง แต่ edge อยู่นอกขอบเขตเรา (D-020) จึงเติมให้ฝั่งเรา
+ * โดย**ไม่ทิ้ง `value_text` เดิม** — ของที่ edge ส่งมายังอยู่ครบ แค่เพิ่มค่าที่ใช้งานได้ข้าง ๆ
+ *
+ * ⚠️ เงื่อนไขต้องตรงกับ regex ใน `api/points.ts` (history) เป๊ะ ไม่งั้นข้อมูลเก่ากับใหม่
+ * จะถูกนับคนละแบบ แล้วกราฟจะมีรอยต่อแปลก ๆ ตรงวันที่ deploy
+ */
+export function numericFromText(text: string): number | null {
+  const t = text.trim();
+  if (!/^-?[0-9]+([.][0-9]+)?$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
