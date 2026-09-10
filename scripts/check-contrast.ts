@@ -20,9 +20,38 @@ const darkBlock = grab(/:root\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/);
 const tok = (block: string, name: string) =>
   block.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`))?.[1];
 
-/** ธีมมืด override เฉพาะบางตัว — ที่ไม่ override ให้ตกกลับไปใช้ค่าธีมสว่าง (ตามที่ CSS ทำจริง) */
-const val = (name: string, theme: "light" | "dark") =>
-  theme === "light" ? tok(lightBlock, name) : (tok(darkBlock, name) ?? tok(lightBlock, name));
+/** `--x: rgba(r,g,b,a)` — คืน [r,g,b,a] ไว้ composite ทับพื้นก่อนคำนวณ */
+const tokRgba = (block: string, name: string) => {
+  const m = block.match(
+    new RegExp(`--${name}:\\s*rgba\\(\\s*([0-9]+)\\s*,\\s*([0-9]+)\\s*,\\s*([0-9]+)\\s*,\\s*([0-9.]+)\\s*\\)`),
+  );
+  return m ? ([+m[1]!, +m[2]!, +m[3]!, +m[4]!] as const) : null;
+};
+
+const hex2 = (n: number) => Math.round(n).toString(16).padStart(2, "0");
+/** สีโปร่งแสงทับพื้นทึบ → สีทึบที่ตาเห็นจริง ; ถ้าไม่ composite จะคำนวณ contrast ไม่ได้เลย */
+const composite = (fg: readonly [number, number, number, number], bgHex: string) => {
+  const n = parseInt(bgHex.replace("#", ""), 16);
+  const bg = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const [r, g, b, a] = fg;
+  return `#${[r, g, b].map((c, i) => hex2(c * a + bg[i]! * (1 - a))).join("")}`;
+};
+
+const declared = (block: string, name: string) => new RegExp(`--${name}:`).test(block);
+
+/**
+ * ธีมมืด override เฉพาะบางตัว — ที่ไม่ override ให้ตกกลับไปใช้ค่าธีมสว่าง (ตามที่ CSS ทำจริง)
+ *
+ * ⚠️ ต้องแยก "ธีมมืดไม่ได้ override" ออกจาก "override แล้วแต่เป็น rgba()/color-mix()"
+ * ให้ได้ ไม่งั้นกรณีหลังจะ fallback ไปวัดค่าธีมสว่างเงียบ ๆ แล้วรายงานว่าผ่านทั้งที่วัดผิดตัว
+ * (เจอจริงตอน T-022: `--line` ธีมมืดเป็น rgba แล้วสคริปต์ไปวัด hex ของธีมสว่างแทน)
+ * — สคริปต์ที่โกหกแย่กว่าไม่มีสคริปต์ กรณีนี้จึงต้อง "ข้าม" ไม่ใช่ "เดา"
+ */
+const val = (name: string, theme: "light" | "dark") => {
+  if (theme === "light") return tok(lightBlock, name);
+  if (declared(darkBlock, name)) return tok(darkBlock, name); // undefined ถ้าไม่ใช่ hex → ข้าม
+  return tok(lightBlock, name);
+};
 
 const lin = (c: number) => {
   const s = c / 255;
@@ -69,11 +98,8 @@ const PAIRS: Pair[] = [
  * มีรายการนี้เพราะถ้าปล่อยให้สคริปต์แดงค้าง จะไม่มีใครรันมันอีกเลย แล้วของใหม่ที่พัง
  * ก็จะหลุดไปด้วย ; แบบนี้สคริปต์ยังจับ **ของใหม่** ได้ตั้งแต่วันนี้ โดยไม่กลบว่ายังมีของเก่าค้าง
  * 🔴 ลบรายการออกทีละอันเมื่อแก้จริง — ห้ามเติมของใหม่เข้ามาเพื่อให้ผ่าน */
-const KNOWN_FAIL = new Set([
-  "light:ตัวหนังสือรองบนพื้นการ์ด",
-  "light:ค่าเก่า/ออฟไลน์บนพื้นการ์ด",
-  "light:เส้นขอบโครงสร้างบนพื้นการ์ด",
-  "dark:ค่าเก่า/ออฟไลน์บนพื้นการ์ด",
+const KNOWN_FAIL = new Set<string>([
+  // ว่างแล้ว — 4 คู่ที่เคยตกถูกแก้ครบที่ T-022 (2026-09-10)
 ]);
 
 let failed = 0;
@@ -83,10 +109,14 @@ let skipped = 0;
 for (const theme of ["light", "dark"] as const) {
   console.log(`\n── ธีม${theme === "light" ? "สว่าง" : "มืด"} ──`);
   for (const [label, fgName, bgName, min] of PAIRS) {
-    const fg = val(fgName, theme);
     const bg = val(bgName, theme);
-    // token บางตัวเป็น rgba()/color-mix() ซึ่งคำนวณตรง ๆ ไม่ได้ — ข้ามแล้วบอกให้รู้
-    // ดีกว่าแกล้งคำนวณด้วยค่าที่ไม่ใช่ของจริง
+    // token โปร่งแสงต้อง composite ทับพื้นก่อน ถึงจะได้สีที่ตาเห็นจริง
+    // (ธีมมืดใช้ rgba กับ --line / --panel — ถ้าไม่ทำตรงนี้จะกลายเป็นรูที่ไม่มีใครตรวจ
+    //  ทั้งที่ D-014 เคยเจอ --line ตกหนักสุด 1.36:1)
+    const fgBlock = theme === "dark" && declared(darkBlock, fgName) ? darkBlock : lightBlock;
+    const rgba = tokRgba(fgBlock, fgName);
+    const fg = rgba && bg ? composite(rgba, bg) : val(fgName, theme);
+    // ที่เหลือคำนวณตรง ๆ ไม่ได้ (เช่น color-mix) — ข้ามแล้วบอกให้รู้ ดีกว่าแกล้งคำนวณ
     if (!fg || !bg) {
       console.log(`  ⏭️  ข้าม (--${fgName} หรือ --${bgName} ไม่ใช่ค่า hex ตรง ๆ)  ${label}`);
       skipped++;
