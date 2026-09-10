@@ -11,9 +11,8 @@ export type CalibrationPoint = { x: number; y: number; value: number };
 /** โครงเดียวกับ pointFixtureSchema ฝั่ง server (contract/points.ts) — นิยามซ้ำตั้งใจ
  *  เหมือน type อื่นในไฟล์นี้ทั้งหมด ไม่ import จาก contract ตรง ๆ กันลาก dependency ฝั่ง
  *  server เข้า bundle เว็บ */
-export type PointFixture =
-  | { kind: "GAUGE"; calibration: CalibrationPoint[] }
-  | { kind: "SEVEN_SEGMENT"; bbox: { x: number; y: number; w: number; h: number }; decimals: number };
+/** GAUGE เท่านั้น — ชนิดอื่นอ่านด้วยโมเดล ไม่มีอะไรให้สอบเทียบ (T-020) */
+export type PointFixture = { kind: "GAUGE"; calibration: CalibrationPoint[] };
 
 export type PointRow = {
   point_id: string;

@@ -11,23 +11,19 @@
 import { z } from "zod";
 
 export const pointKindSchema = z.enum([
-  "GAUGE", // หน้าปัดเข็ม — สอบเทียบด้วยจุดอ้างอิงบนภาพ (ตำแหน่ง+ค่าจริง) อย่างน้อย 2 จุด
-  "SEVEN_SEGMENT", // จอตัวเลข 7 ส่วน — สอบเทียบด้วยกรอบสี่เหลี่ยม
-  "WATER_METER", // มิเตอร์น้ำ — อ่านออกมาเป็นข้อความ (เช่นเลขนับ) ยังไม่มี fixture schema ของตัวเอง
+  "GAUGE", // หน้าปัดเข็ม — **ชนิดเดียวที่ต้องสอบเทียบ** ด้วยจุดอ้างอิงบนภาพ อย่างน้อย 2 จุด
+  "SEVEN_SEGMENT", // จอตัวเลข 7 ส่วน — โมเดลอ่านเอง ไม่มี fixture
+  "WATER_METER", // มิเตอร์น้ำ — โมเดลอ่านเอง ไม่มี fixture
 ]);
 export type PointKind = z.infer<typeof pointKindSchema>;
 
-/** กรอบสี่เหลี่ยมบนภาพจากกล้อง — x,y,w,h เป็นเศษส่วน 0–1 ของขนาดภาพเต็ม (มุมบนซ้าย+กว้าง/สูง) */
-export const bboxSchema = z
-  .object({
-    x: z.number().min(0).max(1),
-    y: z.number().min(0).max(1),
-    w: z.number().min(0).max(1),
-    h: z.number().min(0).max(1),
-  })
-  // ตรวจได้ทันทีตอนนี้เพราะเป็นเศษส่วนแล้ว (ตอนเป็น px ตรวจไม่ได้จนกว่าจะรู้ resolution จริง)
-  .refine((v) => v.x + v.w <= 1, { message: "กรอบล้นขอบขวาของภาพ (x + w ต้อง ≤ 1)", path: ["w"] })
-  .refine((v) => v.y + v.h <= 1, { message: "กรอบล้นขอบล่างของภาพ (y + h ต้อง ≤ 1)", path: ["h"] });
+// 🔴 **calibration เหลือ GAUGE ชนิดเดียวถาวร** (T-020, ผู้ใช้ยืนยัน 2026-09-09)
+// SEVEN_SEGMENT กับ WATER_METER อ่านค่าด้วย **โมเดล** ไม่ใช่ computer vision จึงไม่มี
+// เรขาคณิตในภาพให้สอบเทียบ — ต่างจาก GAUGE ที่ต้องรู้ว่าเข็มชี้ตรงไหนถึงจะแปลงเป็นค่าได้
+// `bboxSchema` กับ `sevenSegmentFixtureSchema` จึงถูกตัดออกที่นี่ (ครึ่งของ D-018 ที่ว่าด้วย
+// bbox ตกไปด้วย ส่วนครึ่งที่ว่าด้วยจุดอ้างอิงของ GAUGE ยังอยู่)
+// ⚠️ `SEVEN_SEGMENT`/`WATER_METER` ยังเป็น **ชนิดหน้าปัดที่ใช้งานอยู่** — ตัดแค่ fixture
+// ไม่ได้ตัดชนิด อย่าเผลอลบออกจาก enum ข้างบน
 
 /** จุดอ้างอิงหนึ่งจุดบนภาพ — ตำแหน่งเป็นเศษส่วน 0–1 + ค่าจริงของหน้าปัด ณ ตำแหน่งนั้น */
 export const calibrationPointSchema = z.object({
@@ -49,20 +45,10 @@ export const gaugeFixtureSchema = z.object({
 // ขยับกล้อง → fixture เปลี่ยน แต่สเกลเท่าเดิม ; เปลี่ยนตัวมิเตอร์ → สเกลเปลี่ยน แต่กล้องเท่าเดิม
 // รวมไว้ด้วยกันจะทำให้ตั้งกล้องใหม่ทีต้องกรอกสเกลใหม่ทุกครั้ง
 
-export const sevenSegmentFixtureSchema = z.object({
-  kind: z.literal("SEVEN_SEGMENT"),
-  bbox: bboxSchema,
-  decimals: z.number().int().min(0).max(4), // ตำแหน่งทศนิยมที่คาดหวัง
-});
-
-// WATER_METER ยังไม่มี fixture schema ของตัวเอง — ตอนนี้จุดชนิดนี้ยังไม่มีการสอบเทียบ
-// กล้อง (fixture) ให้ตั้ง ต้องเป็น null เสมอ เพิ่มทีหลังเมื่อรู้ว่าจะสอบเทียบด้วยอะไร
-// (bbox แบบ SEVEN_SEGMENT? หรือแบบอื่น — ยังไม่มีข้อมูลพอตัดสิน)
-
-export const pointFixtureSchema = z.discriminatedUnion("kind", [
-  gaugeFixtureSchema,
-  sevenSegmentFixtureSchema,
-]);
+// เหลือชนิดเดียวจึงไม่ต้องเป็น discriminatedUnion อีก — `kind: z.literal("GAUGE")` ใน
+// gaugeFixtureSchema ทำหน้าที่ตรวจ discriminator ให้อยู่แล้ว ; ถ้าวันหนึ่งมีชนิดที่ต้อง
+// สอบเทียบเพิ่มค่อยกลับมาเป็น union ตอนนั้น อย่าเผื่อไว้ล่วงหน้าโดยไม่มีของจริง
+export const pointFixtureSchema = gaugeFixtureSchema;
 export type PointFixture = z.infer<typeof pointFixtureSchema>;
 
 export const pointConfigSchema = z.object({

@@ -11,19 +11,6 @@
      ถ้าเริ่มอยากลงมือเขียนโค้ดในใบพวกนี้ แปลว่าถึงขอบแผนที่แล้ว ให้เปิดใบทำจริงแยก -->
 
 
-## T-020 [P3] ตัด dead code ของ calibration ที่ไม่ได้ใช้แล้ว — todo
-why:        2026-09-09 ผู้ใช้ยืนยันว่า **SEVEN_SEGMENT กับ WATER_METER อ่านด้วยโมเดล** ไม่ใช่
-            computer vision แบบ GAUGE จึงไม่มีเรขาคณิตในภาพให้สอบเทียบ → `bboxSchema` กับ
-            `sevenSegmentFixtureSchema` ไม่มีใครใช้ และครึ่งของ D-018 ที่ว่าด้วย bbox ตกไป
-            ; เหลือ **GAUGE ชนิดเดียวที่ต้อง calibrate**
-scope:      `contract/points.ts` (ลบ 2 schema + แก้ comment ของ `pointKindSchema` ที่ยังเขียนว่า
-            7SEG "สอบเทียบด้วยกรอบสี่เหลี่ยม" และ WATER_METER "ยังไม่มี fixture schema") ·
-            ไล่ว่ามีที่อื่น import ไหม · ลบ `pt-a-run-lamp` ใน `dev-inventory.ts` ที่ผู้ใช้ยืนยัน
-            แล้วว่าไม่ใช่ของจริง · จด DECISIONS.md ว่าทำไม calibration เหลือ GAUGE ชนิดเดียว
-done-when:  `bun run type-check` ผ่าน + `smoke-db` / `verify-contract` ยังผ่านเท่าเดิม (จำนวนไม่ลด)
-note:       ⚠️ ลบ schema = แก้สัญญาที่ส่งทีม AI ไปแล้ว — เช็ค `PUBLISHING-GUIDE.md` กับ
-            `CALIBRATION-PROPOSAL.md` ว่ามีตัวอย่าง 7SEG อยู่ไหม ถ้ามีต้องแก้แล้วส่งฉบับใหม่ซ้ำ
-            (เคยพลาดแบบนี้มาแล้วตอน D-016 ตัด LAMP)
 
 ## T-018 [P2] เคาะ: อะไรบ้างที่ต่างกันต่อโรงงาน และเก็บที่ไหน — blocked (รอ T-015)
 why:        ปลายทางคือ "ไม่ต้องแก้โค้ด" แต่ยังไม่มีรายการว่าอะไรบ้างที่ต่างกันจริง ; `.env` รับไป
@@ -201,6 +188,35 @@ note:       ทำหลัง core เดินครบ (T-001..T-007) — บ
 ---
 
 # Archive (done — ใหม่สุดอยู่บน)
+
+## T-020 [P3] ตัด dead code ของ calibration ที่ไม่ได้ใช้แล้ว — done
+why:        2026-09-09 ผู้ใช้ยืนยันว่า **SEVEN_SEGMENT กับ WATER_METER อ่านด้วยโมเดล** ไม่ใช่
+            computer vision แบบ GAUGE จึงไม่มีเรขาคณิตในภาพให้สอบเทียบ → `bboxSchema` กับ
+            `sevenSegmentFixtureSchema` ไม่มีใครใช้ และครึ่งของ D-018 ที่ว่าด้วย bbox ตกไป
+            ; เหลือ **GAUGE ชนิดเดียวที่ต้อง calibrate**
+scope:      `contract/points.ts` (ลบ 2 schema + แก้ comment ของ `pointKindSchema` ที่ยังเขียนว่า
+            7SEG "สอบเทียบด้วยกรอบสี่เหลี่ยม" และ WATER_METER "ยังไม่มี fixture schema") ·
+            ไล่ว่ามีที่อื่น import ไหม · ลบ `pt-a-run-lamp` ใน `dev-inventory.ts` ที่ผู้ใช้ยืนยัน
+            แล้วว่าไม่ใช่ของจริง · จด DECISIONS.md ว่าทำไม calibration เหลือ GAUGE ชนิดเดียว
+done-when:  `bun run type-check` ผ่าน + `smoke-db` / `verify-contract` ยังผ่านเท่าเดิม (จำนวนไม่ลด)
+note:       ⚠️ ลบ schema = แก้สัญญาที่ส่งทีม AI ไปแล้ว — เช็ค `PUBLISHING-GUIDE.md` กับ
+            `CALIBRATION-PROPOSAL.md` ว่ามีตัวอย่าง 7SEG อยู่ไหม ถ้ามีต้องแก้แล้วส่งฉบับใหม่ซ้ำ
+            (เคยพลาดแบบนี้มาแล้วตอน D-016 ตัด LAMP)
+files:      src/contract/points.ts · src/web/apiClient.ts · src/db/schema.ts ·
+            docs/CALIBRATION-PROPOSAL.md
+done: 2026-09-10 ลบ 2 schema + ยุบ `pointFixtureSchema` เหลือ `gaugeFixtureSchema` ตัวเดียว
+      (ไม่ต้องเป็น discriminatedUnion อีก) · ตัด union ฝั่งเว็บที่สะท้อนโครงเดิมไว้ ·
+      แก้คอมเมนต์ที่ยังอ้าง bbox ใน `db/schema.ts` · จด **D-022**
+      📌 **สิ่งที่ note ของใบนี้เขียนไว้ผิด**: `pt-a-run-lamp` **ไม่อยู่ใน dev-inventory แล้ว**
+      (D-016 ลบไปตั้งแต่ 2026-09-03) — การ์ดที่เห็นบนจอ dev มาจากแถวเก่าใน DB ไม่ใช่โค้ด
+      📌 **`PUBLISHING-GUIDE.md` ไม่ต้องแก้** — ที่นั่นพูดถึง `SEVEN_SEGMENT` ในฐานะ
+      *ชนิดหน้าปัด* ซึ่งยังใช้งานปกติ ; ที่ถอนคือ *การสอบเทียบ* เท่านั้น ไม่ใช่ตัวชนิด
+      ; `CALIBRATION-PROPOSAL.md` **ทำเครื่องหมายยกเลิก ไม่ลบทิ้ง** เพราะฉบับเก่าส่งทีม AI ไปแล้ว
+      ; verify: type-check + build + smoke-db ผ่าน · verify-contract 36 ข้อความ parse ไม่ผ่าน 0
+      ครบทั้ง 3 เครื่อง (เท่าเดิม ไม่ลด)
+      🔴 **ต้องแจ้งทีม AI ว่าถอน bbox แล้ว** — ถ้าเขาเริ่มทำฝั่ง edge รองรับไว้จะเสียเปล่า
+
+
 
 ## T-022 [P2] คู่สี 4 คู่ตกเกณฑ์ AA เมื่ออยู่บน "พื้นการ์ด" — done
 why:        `bun run check-contrast` (เพิ่มตอน T-021) เจอตั้งแต่รันครั้งแรก — **ต้นตอคือ
