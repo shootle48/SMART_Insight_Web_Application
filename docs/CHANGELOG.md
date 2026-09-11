@@ -27,6 +27,18 @@
 
 ---
 
+## T-024 done: e2e บน MQTT จริงตรง done-when ทุกข้อ — ปลดบล็อก T-025/T-026  🟡
+- apply migration `0003` แล้ว (4 คอลัมน์ nullable) · รัน scenario 7 ขั้นผ่าน `mosquitto_pub` จริง
+  พร้อมฟัง SSE คู่กัน: ปกติ 3 → OK (1 event) · เกิน 2 → ยัง OK · เกินครั้งที่ 3 → ALARM (2) ·
+  **เกินต่ออีก 30 → ยัง 2 events** (พิสูจน์ว่าไม่ท่วมจอ) · UNREADABLE ×3 → ไม่แตะ · กลับ 3 → OK (3)
+- `GET /api/points` คืน 4 ฟิลด์ · `invalid` 0 · `alarm_transitions` 3 · `alarm_since` ขยับทุกครั้ง
+  ที่เปลี่ยน · SSE payload ครบ `from/to/value/captured_at`
+- พิสูจน์ `invalidatePointConfig` ด้วย — ตั้งเกณฑ์ทาง SQL **หลัง**จุดถูกสร้าง (cache จำว่าไม่มีเกณฑ์)
+  แล้วยิง PATCH → เกณฑ์มีผลเฟรมถัดไปทันที ไม่ต้องรอรอบล้าง 5 นาที
+- ล้างข้อมูลทดสอบแล้ว (readings/points/devices ของ `edge-t024` + retained บน broker)
+
+---
+
 ## T-024 (doing): backend ของ alarm — โค้ดครบ, pure logic ผ่าน 18 ข้อ, รอเทส DB/SSE  🟡
 - **schema**: `alarm_low`/`alarm_high`/`alarm_state`/`alarm_since` บน `points` — migration `0003`
   เป็น `ADD COLUMN` nullable 4 บรรทัด ปลอดภัยกับข้อมูลเดิม (**ยังไม่ apply** — Docker ปิดอยู่)
