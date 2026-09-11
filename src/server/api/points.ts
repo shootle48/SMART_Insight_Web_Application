@@ -49,6 +49,15 @@ const pointConfigInput = z
     unit: z.string().trim().min(1).nullable(),
     min_value: z.number().finite().nullable(),
     max_value: z.number().finite().nullable(),
+    // ช่วงที่ยอมรับได้ (D-023) — คนละเรื่องกับสเกล ; null ทั้งคู่ = ไม่เตือนจุดนี้
+    // ⚠️ optional ไม่ใช่ default(null) — client เก่าที่ยังไม่รู้จักฟิลด์นี้ (kiosk cache JS ไว้)
+    // ต้อง "ไม่แตะ" เกณฑ์ที่ตั้งไว้แล้ว ไม่ใช่ล้างทิ้งเงียบ ๆ ; drizzle .set() ข้าม key ที่ undefined
+    alarm_low: z.number().finite().nullable().optional(),
+    alarm_high: z.number().finite().nullable().optional(),
+  })
+  .refine((v) => (v.alarm_low === undefined) === (v.alarm_high === undefined), {
+    message: "ถ้าส่งเกณฑ์ ต้องส่งทั้ง alarm_low และ alarm_high",
+    path: ["alarm_high"],
   })
   // min/max ต้องมาคู่กันเสมอ — สเกลครึ่งเดียว (มี min ไม่มี max) วาดเกจไม่ได้และ
   // เช็ค "เกินสเกล" ก็ทำไม่ได้เช่นกัน (ดู over ใน PointCard.tsx)
@@ -59,6 +68,17 @@ const pointConfigInput = z
   .refine((v) => v.min_value === null || v.max_value === null || v.max_value > v.min_value, {
     message: "ค่าสูงสุดต้องมากกว่าค่าต่ำสุด",
     path: ["max_value"],
+  })
+  // เกณฑ์ใช้กติกาเดียวกับสเกล (คู่กัน/สูง>ต่ำ) แต่**ตั้งใจไม่บังคับว่าต้องอยู่ในสเกล** —
+  // เข็มชี้เลยสุดสเกลเป็นเรื่องปกติ (comment ท้าย contract/points.ts) และช่วงที่ยอมรับได้
+  // อาจกว้างกว่าหน้าปัดที่อ่านได้ก็ได้ ไม่ใช่เรื่องของเรา
+  .refine((v) => v.alarm_low === undefined || (v.alarm_low === null) === (v.alarm_high === null), {
+    message: "ต้องใส่เกณฑ์ต่ำ/สูงคู่กัน หรือเว้นว่างทั้งคู่ (= ไม่แจ้งเตือนจุดนี้)",
+    path: ["alarm_high"],
+  })
+  .refine((v) => typeof v.alarm_low !== "number" || typeof v.alarm_high !== "number" || v.alarm_high > v.alarm_low, {
+    message: "เกณฑ์สูงต้องมากกว่าเกณฑ์ต่ำ",
+    path: ["alarm_high"],
   });
 
 /**

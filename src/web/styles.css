@@ -633,6 +633,14 @@ body, .card, .card-rail, .dev, .devicebar .dev-dot, .detail, .d-cfg, .d-hero,
 }
 .d-cfg input:focus { outline: 2px solid var(--primary); outline-offset: -1px; border-color: transparent; }
 .d-cfg-scale { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* กลุ่มคู่ช่อง "ต่ำ/สูง" (T-026) — สเกลกับเกณฑ์เตือนหน้าตาเหมือนกันแต่คนละความหมาย
+   แยกด้วยเส้นบนบาง ๆ + หัวกลุ่มเป็นตัวหนังสือปกติ (ไม่ uppercase — นั่นสงวนไว้ให้ field label)
+   + คำอธิบาย 1 บรรทัดที่บอกว่า "ต่างจากอีกกลุ่มยังไง" ไม่ใช่แค่บอกว่ากลุ่มนี้คืออะไร */
+.d-cfg-group { margin: 4px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--line-soft); min-width: 0; }
+.d-cfg-group legend { padding: 0 0 2px; font-size: 14px; font-weight: 600; color: var(--text); }
+.d-cfg-hint { margin: 0 0 10px; font-size: 12.5px; line-height: 1.6; color: var(--muted); }
+.d-cfg-hint b { font-weight: 600; color: var(--text); }
 .d-cfg-actions { display: flex; gap: 8px; margin-top: 4px; }
 /* ⚠️ ต้องเป็น `.d-cfg-actions button.d-cfg-save` — เขียน `.d-cfg-save` เฉย ๆ จะแพ้
    `.d-cfg-actions button` ข้างล่างที่ specificity (0,1,1) > (0,1,0) แม้จะเขียนก่อนก็ตาม

@@ -50,7 +50,26 @@ function toConfigForm(point: PointRow) {
     unit: point.unit ?? "",
     min: point.min_value !== null ? String(point.min_value) : "",
     max: point.max_value !== null ? String(point.max_value) : "",
+    alarmLow: point.alarm_low !== null ? String(point.alarm_low) : "",
+    alarmHigh: point.alarm_high !== null ? String(point.alarm_high) : "",
   };
+}
+
+/**
+ * แปลงคู่ช่อง "ต่ำ/สูง" จาก string ในฟอร์มเป็นตัวเลข — กติกาเดียวกันทั้งสเกลและเกณฑ์:
+ * ต้องมาคู่กันหรือเว้นว่างทั้งคู่ · เป็นตัวเลข · สูงต้องมากกว่าต่ำ
+ * คืน error message เมื่อไม่ผ่าน (ให้ผู้เรียกใส่ชื่อคู่ให้เอง จะได้บอกคนใช้ถูกช่อง)
+ */
+type PairResult = { error: string } | { low: number | null; high: number | null };
+function parsePair(lowRaw: string, highRaw: string, name: string, emptyHint: string): PairResult {
+  const lo = lowRaw.trim();
+  const hi = highRaw.trim();
+  if ((lo === "") !== (hi === "")) return { error: `ต้องใส่${name}คู่กัน หรือเว้นว่างทั้งคู่ (${emptyHint})` };
+  const low = lo === "" ? null : Number(lo);
+  const high = hi === "" ? null : Number(hi);
+  if ((low !== null && Number.isNaN(low)) || (high !== null && Number.isNaN(high))) return { error: `${name}ต้องเป็นตัวเลข` };
+  if (low !== null && high !== null && high <= low) return { error: `${name}: ค่าสูงต้องมากกว่าค่าต่ำ` };
+  return { low, high };
 }
 
 type Props = {
@@ -192,27 +211,28 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
         return;
       }
       const unit = configForm.unit.trim() === "" ? null : configForm.unit.trim();
-      const minRaw = configForm.min.trim();
-      const maxRaw = configForm.max.trim();
-      if ((minRaw === "") !== (maxRaw === "")) {
-        setSaveError("ต้องใส่ค่าต่ำสุด/สูงสุดคู่กัน หรือเว้นว่างทั้งคู่ (จุดที่ไม่มีสเกล)");
+      const scale = parsePair(configForm.min, configForm.max, "ค่าต่ำสุด/สูงสุดของสเกล", "จุดที่ไม่มีสเกล");
+      if ("error" in scale) {
+        setSaveError(scale.error);
         return;
       }
-      const min_value = minRaw === "" ? null : Number(minRaw);
-      const max_value = maxRaw === "" ? null : Number(maxRaw);
-      if ((min_value !== null && Number.isNaN(min_value)) || (max_value !== null && Number.isNaN(max_value))) {
-        setSaveError("ค่าต่ำสุด/สูงสุดต้องเป็นตัวเลข");
-        return;
-      }
-      if (min_value !== null && max_value !== null && max_value <= min_value) {
-        setSaveError("ค่าสูงสุดต้องมากกว่าค่าต่ำสุด");
+      const alarm = parsePair(configForm.alarmLow, configForm.alarmHigh, "เกณฑ์แจ้งเตือน", "ไม่แจ้งเตือนจุดนี้");
+      if ("error" in alarm) {
+        setSaveError(alarm.error);
         return;
       }
 
       setSaving(true);
       setSaveError(null);
       try {
-        const updated = await updatePointConfig(point.point_id, { label, unit, min_value, max_value });
+        const updated = await updatePointConfig(point.point_id, {
+          label,
+          unit,
+          min_value: scale.low,
+          max_value: scale.high,
+          alarm_low: alarm.low,
+          alarm_high: alarm.high,
+        });
         onConfigSaved(updated);
         setEditingConfig(false);
       } catch (err) {
@@ -393,28 +413,62 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
               placeholder="เช่น bar (เว้นว่างได้ถ้าไม่มีหน่วย)"
             />
           </label>
-          <div className="d-cfg-scale">
-            <label>
-              ค่าต่ำสุด
-              <input
-                type="number"
-                step="any"
-                value={configForm.min}
-                onChange={(e) => setConfigForm((f) => ({ ...f, min: e.target.value }))}
-                placeholder="ไม่มีสเกล = เว้นว่าง"
-              />
-            </label>
-            <label>
-              ค่าสูงสุด
-              <input
-                type="number"
-                step="any"
-                value={configForm.max}
-                onChange={(e) => setConfigForm((f) => ({ ...f, max: e.target.value }))}
-                placeholder="ไม่มีสเกล = เว้นว่าง"
-              />
-            </label>
-          </div>
+          {/* สองกลุ่มนี้หน้าตาเหมือนกัน (ต่ำ/สูง) แต่คนละความหมาย — ต้องมีหัวกลุ่มบอก
+              ไม่งั้นคนกรอกจะเอาเกณฑ์เตือนไปใส่ช่องสเกล (T-026 note) */}
+          <fieldset className="d-cfg-group">
+            <legend>สเกลของหน้าปัด</legend>
+            <p className="d-cfg-hint">ช่วงที่หน้าปัดอ่านได้ — ใช้วาดเกจและบอกว่า "เกินสเกล"</p>
+            <div className="d-cfg-scale">
+              <label>
+                ค่าต่ำสุด
+                <input
+                  type="number"
+                  step="any"
+                  value={configForm.min}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, min: e.target.value }))}
+                  placeholder="ไม่มีสเกล = เว้นว่าง"
+                />
+              </label>
+              <label>
+                ค่าสูงสุด
+                <input
+                  type="number"
+                  step="any"
+                  value={configForm.max}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, max: e.target.value }))}
+                  placeholder="ไม่มีสเกล = เว้นว่าง"
+                />
+              </label>
+            </div>
+          </fieldset>
+          <fieldset className="d-cfg-group">
+            <legend>ช่วงที่ยอมรับได้</legend>
+            <p className="d-cfg-hint">
+              ออกนอกช่วงนี้ = แจ้งเตือน — <b>คนละเรื่องกับสเกล</b> เกจอ่านได้ถึง 500 ไม่ได้แปลว่า 480 ปกติ
+            </p>
+            <div className="d-cfg-scale">
+              <label>
+                เกณฑ์ต่ำ
+                <input
+                  type="number"
+                  step="any"
+                  value={configForm.alarmLow}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, alarmLow: e.target.value }))}
+                  placeholder="ไม่เตือน = เว้นว่าง"
+                />
+              </label>
+              <label>
+                เกณฑ์สูง
+                <input
+                  type="number"
+                  step="any"
+                  value={configForm.alarmHigh}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, alarmHigh: e.target.value }))}
+                  placeholder="ไม่เตือน = เว้นว่าง"
+                />
+              </label>
+            </div>
+          </fieldset>
           {saveError && <div className="d-err">{saveError}</div>}
           <div className="d-cfg-actions">
             <button type="submit" className="d-cfg-save" disabled={saving}>

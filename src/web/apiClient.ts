@@ -25,6 +25,11 @@ export type PointRow = {
   min_value: number | null;
   max_value: number | null;
   fixture: PointFixture | null;
+  // ช่วงที่ยอมรับได้ + สถานะที่ ingest ตัดสิน (D-023) — คนละเรื่องกับ min/max ซึ่งเป็นสเกล
+  alarm_low: number | null;
+  alarm_high: number | null;
+  alarm_state: "OK" | "ALARM" | null;
+  alarm_since: string | null;
   device_status: "ONLINE" | "OFFLINE";
 
   // เป็น null ได้เมื่อจุดนี้ยังไม่เคยมีค่าเลย (เพิ่งถูกสร้าง หรือกล้องเสียตั้งแต่แรก)
@@ -104,6 +109,9 @@ export type PointConfigInput = {
   unit: string | null;
   min_value: number | null;
   max_value: number | null;
+  /** ช่วงที่ยอมรับได้ (D-023) — null ทั้งคู่ = ไม่แจ้งเตือนจุดนี้ ; คนละเรื่องกับ min/max */
+  alarm_low: number | null;
+  alarm_high: number | null;
 };
 
 /** บันทึก label/หน่วย/สเกล — สำเร็จแล้ว server จะตั้ง enabled=true ให้เอง (ดู server/api/points.ts) */
