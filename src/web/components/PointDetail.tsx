@@ -413,11 +413,10 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
               placeholder="เช่น bar (เว้นว่างได้ถ้าไม่มีหน่วย)"
             />
           </label>
-          {/* สองกลุ่มนี้หน้าตาเหมือนกัน (ต่ำ/สูง) แต่คนละความหมาย — ต้องมีหัวกลุ่มบอก
-              ไม่งั้นคนกรอกจะเอาเกณฑ์เตือนไปใส่ช่องสเกล (T-026 note) */}
+          {/* สองกลุ่มนี้หน้าตาเหมือนกัน (ต่ำ/สูง) แต่คนละความหมาย — หัวกลุ่มอย่างเดียวพอ
+              (เคยมีคำอธิบายใต้หัว ผู้ใช้บอกว่างุนงงกว่าไม่มี — ตัดออก 2026-09-11) */}
           <fieldset className="d-cfg-group">
             <legend>สเกลของหน้าปัด</legend>
-            <p className="d-cfg-hint">ช่วงที่หน้าปัดอ่านได้ — ใช้วาดเกจและบอกว่า "เกินสเกล"</p>
             <div className="d-cfg-scale">
               <label>
                 ค่าต่ำสุด
@@ -443,9 +442,6 @@ export function PointDetail({ point, now, onClose, onConfigSaved }: Props) {
           </fieldset>
           <fieldset className="d-cfg-group">
             <legend>ช่วงที่ยอมรับได้</legend>
-            <p className="d-cfg-hint">
-              ออกนอกช่วงนี้ = แจ้งเตือน — <b>คนละเรื่องกับสเกล</b> เกจอ่านได้ถึง 500 ไม่ได้แปลว่า 480 ปกติ
-            </p>
             <div className="d-cfg-scale">
               <label>
                 เกณฑ์ต่ำ
