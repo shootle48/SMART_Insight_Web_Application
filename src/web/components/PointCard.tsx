@@ -37,28 +37,38 @@ export function PointCard({ point, now, onOpen, selected }: Props) {
   const hasScale = point.min_value !== null && point.max_value !== null;
   const over =
     point.value_num !== null && hasScale && (point.value_num < point.min_value! || point.value_num > point.max_value!);
+  // สถานะที่ ingest ยืนยันแล้ว (D-023) — คนละเรื่องกับ over ซึ่งเป็น "เกินสเกลหน้าปัด"
+  const alarm = point.alarm_state === "ALARM";
 
   // ลำดับสำคัญ: ความเก่า/ตายของข้อมูลต้องมาก่อนคุณภาพของค่าเสมอ
   // ถ้าให้ unreadable มาก่อน stale การ์ดที่ "อ่านไม่ออกเมื่อนาทีที่แล้วแล้วเงียบไปเลย"
   // จะไม่ถูกหรี่ ดูเหมือนเพิ่งอ่านไม่ออกเมื่อกี้ ทั้งที่ข้อมูลทั้งใบเชื่อไม่ได้แล้ว
+  //
+  // alarm อยู่หลัง stale แต่**ก่อน unreadable** — ALARM เป็นสถานะที่ยืนยันแล้วและค้างอยู่
+  // ถ้าให้ unreadable บังได้ การ์ดจะกระพริบสลับ "ผิดปกติ/อ่านไม่ออก" ทั้งวัน (UNREADABLE 47%)
+  // ทั้งที่สถานะ ALARM ไม่ได้เปลี่ยน ; แต่ stale ต้องชนะ alarm เพราะ D-023 บอกให้ดู "ค่าเก่า" คู่กัน
   const state = never
     ? "never"
     : offline
       ? "offline"
       : stale
         ? "stale"
-        : unreadable
-          ? "unreadable"
-          : over
-            ? "over"
-            : uncertain
-              ? "uncertain"
-              : "ok";
+        : alarm
+          ? "alarm"
+          : unreadable
+            ? "unreadable"
+            : over
+              ? "over"
+              : uncertain
+                ? "uncertain"
+                : "ok";
 
   // ข้อความ banner — "never" ไม่มี banner เพราะขอบประเฉย ๆ ก็สื่อพอแล้วว่า
   // "ยังไม่เคยมีข้อมูล" (สถานะเป็นกลาง) ต่างจากสถานะอื่นที่ "ผิดปกติ" จริง ๆ
   const bannerText =
-    state === "unreadable"
+    state === "alarm"
+      ? "ผิดปกติ"
+      : state === "unreadable"
       ? "อ่านไม่ออก"
       : state === "over"
         ? "เกินสเกล"

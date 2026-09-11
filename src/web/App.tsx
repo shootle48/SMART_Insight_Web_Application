@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLiveData } from "./useLiveData";
 import { DeviceBar } from "./components/DeviceBar";
+import { AlarmToasts } from "./components/AlarmToasts";
 import { PointCard } from "./components/PointCard";
 import { PointDetail } from "./components/PointDetail";
 import { IconMoon, IconSun } from "./components/Icons";
@@ -19,7 +20,7 @@ function initialTheme(): "light" | "dark" {
 }
 
 export function App() {
-  const { points, devices, conn, error, reload, patchPoint, patchDevice } = useLiveData();
+  const { points, devices, conn, error, reload, patchPoint, patchDevice, toasts, dismissToast } = useLiveData();
 
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
   useEffect(() => {
@@ -53,6 +54,9 @@ export function App() {
   const abnormal = points.filter(
     (p) => p.quality === "UNREADABLE" || p.quality === "UNCERTAIN" || p.device_status !== "ONLINE",
   ).length;
+  // จุดที่ ingest ยืนยันแล้วว่าออกนอกเกณฑ์ (D-023) — โชว์แยกเพราะเป็นเรื่องที่ต้องมีคนไปดูจริง
+  // ต่างจาก "ไม่ปกติ" ข้างบนที่รวมอาการฝั่งระบบ (อ่านไม่ออก/ออฟไลน์) ซึ่งเป็นเรื่องของกล้อง
+  const alarming = points.filter((p) => p.alarm_state === "ALARM").length;
 
   return (
     <>
@@ -113,9 +117,17 @@ export function App() {
           <p className="page-sub">ค่าหน้าปัดจากตู้ควบคุมในโรงงาน · อัปเดตสดผ่าน MQTT</p>
         </div>
         {totalPoints > 0 && (
-          <div className="page-stat">
-            <span className="page-stat-num">{totalPoints - abnormal}<span className="page-stat-of">/{totalPoints}</span></span>
-            <span className="page-stat-label">จุดปกติ</span>
+          <div className="page-stats">
+            {alarming > 0 && (
+              <div className="page-stat page-stat-alarm">
+                <span className="page-stat-num">{alarming}</span>
+                <span className="page-stat-label">ผิดปกติ</span>
+              </div>
+            )}
+            <div className="page-stat">
+              <span className="page-stat-num">{totalPoints - abnormal}<span className="page-stat-of">/{totalPoints}</span></span>
+              <span className="page-stat-label">จุดปกติ</span>
+            </div>
           </div>
         )}
       </header>
@@ -128,6 +140,7 @@ export function App() {
       )}
 
       <DeviceBar devices={devices} now={now} patchDevice={patchDevice} />
+      <AlarmToasts toasts={toasts} points={points} devices={devices} onDismiss={dismissToast} />
 
       {points.length === 0 && !error && <p className="empty">ยังไม่มีจุดวัดในระบบ</p>}
 

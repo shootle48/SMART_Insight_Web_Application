@@ -8,10 +8,17 @@ import {
   fetchDevices,
   fetchPoints,
   type DeviceRow,
+  type LiveAlarm,
   type LiveDevice,
   type LiveReading,
   type PointRow,
 } from "./apiClient";
+
+/** toast ที่รอแสดง — เก็บเฉพาะ transition ที่คนควรรู้ (→ALARM และ ALARM→OK) */
+export type AlarmToast = LiveAlarm & { id: number; at: number };
+/** จอ kiosk ไม่มีคนกดปิด — ต้องจำกัดจำนวนที่ซ้อน ไม่งั้นวันที่หลายจุดเสียพร้อมกันจะบังจอทั้งหมด */
+const TOAST_MAX = 3;
+const TOAST_TTL_MS = 10_000;
 
 export type ConnState = "connecting" | "live" | "lost";
 
@@ -20,6 +27,8 @@ export function useLiveData() {
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [conn, setConn] = useState<ConnState>("connecting");
   const [error, setError] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<AlarmToast[]>([]);
+  const toastSeq = useRef(0);
 
   // ใช้บังคับให้ component วาดใหม่ทุกวินาที เพื่อให้ "อายุของค่า" กับสถานะ stale
   // เดินหน้าเองแม้ไม่มีข้อมูลใหม่เข้ามา — ถ้าไม่มีตัวนี้ จอที่ข้อมูลหยุดไหลจะดูเหมือนปกติตลอดไป
@@ -93,6 +102,22 @@ export function useLiveData() {
       );
     });
 
+    es.addEventListener("alarm", (ev) => {
+      const a = JSON.parse((ev as MessageEvent).data) as LiveAlarm;
+      // การ์ดต้องค้างสถานะไว้ — toast เป็นของชั่วคราว ห้ามเป็นที่เดียวที่บอกว่าผิดปกติ (T-025)
+      setPoints((prev) =>
+        prev.map((p) => (p.point_id === a.point_id ? { ...p, alarm_state: a.to, alarm_since: a.to ? a.captured_at : null } : p)),
+      );
+      // เด้งเฉพาะที่คนควรรู้: เข้า ALARM หรือกลับจาก ALARM — ไม่เด้งตอนเริ่มเฝ้า (null→OK)
+      // หรือตอนถอนเกณฑ์ (→null) เพราะสองอย่างนั้นไม่ใช่เหตุการณ์ที่หน้างานต้องหันมาดู
+      const worth = a.to === "ALARM" || (a.from === "ALARM" && a.to === "OK");
+      if (!worth) return;
+      setToasts((prev) => {
+        const next = [...prev, { ...a, id: ++toastSeq.current, at: Date.now() }];
+        return next.length > TOAST_MAX ? next.slice(next.length - TOAST_MAX) : next;
+      });
+    });
+
     es.addEventListener("device", (ev) => {
       const d = JSON.parse((ev as MessageEvent).data) as LiveDevice;
       setDevices((prev) => prev.map((x) => (x.device_id === d.device_id ? { ...x, ...d } : x)));
@@ -123,5 +148,15 @@ export function useLiveData() {
     setDevices((prev) => prev.map((d) => (d.device_id === deviceId ? { ...d, ...patch } : d)));
   }, []);
 
-  return { points, devices, conn, error, reload: loadAll, patchPoint, patchDevice };
+  // toast หายเอง — จอ kiosk ไม่มีใครกด ; เช็คทุกวินาทีพร้อม tick เดิม ไม่ตั้ง timer แยกต่ออัน
+  useEffect(() => {
+    const t = setInterval(() => {
+      const cutoff = Date.now() - TOAST_TTL_MS;
+      setToasts((prev) => (prev.some((x) => x.at < cutoff) ? prev.filter((x) => x.at >= cutoff) : prev));
+    }, 1_000);
+    return () => clearInterval(t);
+  }, []);
+  const dismissToast = useCallback((id: number) => setToasts((prev) => prev.filter((x) => x.id !== id)), []);
+
+  return { points, devices, conn, error, reload: loadAll, patchPoint, patchDevice, toasts, dismissToast };
 }

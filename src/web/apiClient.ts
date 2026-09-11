@@ -30,7 +30,7 @@ export type PointRow = {
   alarm_high: number | null;
   alarm_state: "OK" | "ALARM" | null;
   alarm_since: string | null;
-  device_status: "ONLINE" | "OFFLINE";
+  device_status: "ONLINE" |   "OFFLINE";
 
   // เป็น null ได้เมื่อจุดนี้ยังไม่เคยมีค่าเลย (เพิ่งถูกสร้าง หรือกล้องเสียตั้งแต่แรก)
   value_num: number | null;
@@ -81,6 +81,16 @@ export type LiveReading = {
   frame_id: string;
   captured_at: string;
   received_at: string;
+};
+
+/** สถานะเกณฑ์เปลี่ยน — ยิงเฉพาะตอนเปลี่ยน ไม่ใช่ทุกเฟรม (ดู server/ingest/alarm.ts) */
+export type LiveAlarm = {
+  point_id: string;
+  device_id: string;
+  from: "OK" | "ALARM" | null;
+  to: "OK" | "ALARM" | null;
+  value: number | null;
+  captured_at: string;
 };
 
 export type LiveDevice = {
