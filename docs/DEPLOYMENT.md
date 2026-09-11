@@ -276,5 +276,5 @@ curl -s localhost:3000/api/health | python3 -m json.tool | grep -A9 '"backup"'
 **`bun run start` ขึ้น `EADDRINUSE`** — ไม่ใช่ความผิดพลาด แปลว่า systemd service `meter`
 ทำงานอยู่แล้วและถือ port 3000 ไว้ · ใช้ `systemctl status meter` / `journalctl -u meter -f` แทน
 
-**จอขึ้นแต่ไม่มีข้อมูล** — ดู `curl localhost:3000/api/health` ที่ `checks.ingest.received`
-ถ้าไม่ขยับ = ไม่มีใคร publish เข้ามา ; ถ้า `invalid` ขยับ = มีคนส่งแต่ผิดสัญญา ดู `journalctl -u meter`
+**จอขึ้นแต่ไม่มีข้อมูล** — ไล่ทีละ topic ตาม `docs/MQTT-CHECKLIST.md` (ดูสดผ่าน broker ก่อน
+แล้วค่อยดูว่าถึงระบบเราไหม — แยกให้ออกว่าฝั่งเขาไม่ส่ง หรือของเราไม่รับ)

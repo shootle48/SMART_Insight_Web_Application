@@ -91,7 +91,16 @@ const DOCS_META: Record<string, DocMeta> = {
     role: "ขั้นตอนเอาขึ้น Pi + กับดักที่เจอมาแล้ว",
     tier: "ref",
     next: ["HANDOFF.md", "ดูว่าตอนนี้เครื่องจริงอยู่สถานะไหน มีอะไรค้างรอ deploy"],
-    also: [["ARCHITECTURE.md", "สงสัยว่าชิ้นส่วนที่กำลัง deploy ทำหน้าที่อะไร"]],
+    also: [
+      ["ARCHITECTURE.md", "สงสัยว่าชิ้นส่วนที่กำลัง deploy ทำหน้าที่อะไร"],
+      ["MQTT-CHECKLIST.md", "deploy แล้วจอไม่มีข้อมูล — ไล่ทีละ topic ว่าหยุดตรงไหน"],
+    ],
+  },
+  "MQTT-CHECKLIST.md": {
+    role: "ทีมถาม \"ข้อมูลส่งมาไหม\" — ดูสด + ตรวจว่าถึงเรา ทีละ topic",
+    tier: "ref",
+    next: ["PUBLISHING-GUIDE.md", "ถ้าไม่ผ่านชั้น broker = ฝั่งเขาส่งผิด → เปิดคู่มือที่ส่งให้เขา"],
+    also: [["DEPLOYMENT.md", "อาการอื่นที่ไม่ใช่เรื่องข้อมูล (service/kiosk/พอร์ต)"]],
   },
   "CLAUDE.md": {
     role: "กฎการทำงาน + โปรเจกต์นี้คืออะไร (โหลดทุก turn)",
@@ -143,6 +152,7 @@ const ORDER = [
   "CLAUDE.md",
   "WORKFLOW.md",
   "AI-GUIDE.md",
+  "MQTT-CHECKLIST.md",
   "PUBLISHING-GUIDE.md",
   "SNAPSHOT-PROPOSAL.md",
   "CALIBRATION-PROPOSAL.md",

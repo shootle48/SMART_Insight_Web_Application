@@ -69,4 +69,5 @@ bun run verify-contract 25   # พิสูจน์ว่า mock ยิงต�
 - จะเริ่มงานใหม่/ดู backlog → `docs/TICKETS.md`
 - สงสัยว่าทำไมตัดสินใจแบบนี้ → `docs/DECISIONS.md`
 - จะเอาขึ้น Pi → `docs/DEPLOYMENT.md`
+- **ทีมถามว่า "ข้อมูลส่งมาไหม" → `docs/MQTT-CHECKLIST.md`** (ดูสด + ตรวจว่าถึงเรา ทีละ topic)
 - ประวัติงานที่ทำแล้ว → `docs/CHANGELOG.md`
