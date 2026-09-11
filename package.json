@@ -24,6 +24,7 @@
     "check-contrast": "bun run scripts/check-contrast.ts",
     "smoke-throttle": "INGEST_MIN_INTERVAL_MS=800 INGEST_MAX_GAP_MS=30000 bun run scripts/smoke-throttle.ts",
     "smoke-retention": "bun run scripts/smoke-retention.ts",
+    "smoke-alarm": "bun run scripts/smoke-alarm.ts",
     "stack:up": "docker compose --env-file .env -f deploy/docker-compose.yml up -d",
     "stack:down": "docker compose --env-file .env -f deploy/docker-compose.yml stop",
     "stack:status": "docker compose --env-file .env -f deploy/docker-compose.yml ps",

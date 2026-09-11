@@ -29,9 +29,20 @@ export type LiveDeviceState = {
   last_heartbeat_at?: string;
 };
 
+/** สถานะเกณฑ์เปลี่ยน (D-023) — ยิงเฉพาะตอน**เปลี่ยน** ไม่ใช่ทุกเฟรม ดู ingest/alarm.ts */
+export type LiveAlarm = {
+  point_id: string;
+  device_id: string;
+  from: "OK" | "ALARM" | null;
+  to: "OK" | "ALARM" | null;
+  value: number | null;
+  captured_at: string;
+};
+
 type Events = {
   readings: [LiveReading[]];
   device: [LiveDeviceState];
+  alarm: [LiveAlarm];
 };
 
 class TypedEmitter extends EventEmitter {

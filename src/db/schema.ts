@@ -73,6 +73,16 @@ export const points = pgTable(
     // เพราะ config ยังไม่ตรงกัน ("ตรวจไม่ได้" ไม่ควรแปลว่า "โยนข้อมูลทิ้ง")
     fixture: jsonb("fixture").$type<PointFixture>(),
 
+    // ช่วงที่ "ยอมรับได้" ของจุดนี้ (D-023) — **คนละเรื่องกับ min_value/max_value** ซึ่งเป็น
+    // สเกลของหน้าปัด: เกจอ่านได้ 0–500 psi ไม่ได้แปลว่า 480 เป็นค่าปกติ
+    // ต้องมาคู่กันหรือ null ทั้งคู่ (= ไม่ประเมินจุดนี้) ; ไม่บังคับว่าต้องอยู่ในสเกล
+    alarm_low: doublePrecision("alarm_low"),
+    alarm_high: doublePrecision("alarm_high"),
+    // สถานะปัจจุบันที่ ingest ตัดสิน — null = ยังไม่ประเมิน (ไม่มีเกณฑ์ หรือยังไม่ครบ N ครั้ง)
+    // เขียนเฉพาะตอน**เปลี่ยน**สถานะเท่านั้น ไม่ใช่ทุกเฟรม (ไม่งั้นเป็นภาระ SD แบบที่ D-012 แก้)
+    alarm_state: text("alarm_state").$type<"OK" | "ALARM">(),
+    alarm_since: timestamp("alarm_since", { withTimezone: true }),
+
     // false = ยังไม่ถูกยืนยันโดยคน (เช่นตัวที่ ingest สร้างเอง) — ไม่ต้องขึ้นจอหลัก
     enabled: boolean("enabled").notNull().default(false),
 

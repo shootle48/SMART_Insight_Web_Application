@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "../../db/index";
 import { points, devices } from "../../db/schema";
 import { meterTopics, pointFixtureSchema } from "../../contract";
-import { publish } from "../ingest/index";
+import { publish, invalidatePointConfig } from "../ingest/index";
 
 export const pointsApi = new Hono();
 
@@ -24,6 +24,7 @@ pointsApi.get("/", async (c) => {
     SELECT
       p.point_id, p.device_id, p.camera_id, p.label, p.unit, p.kind, p.enabled,
       p.min_value, p.max_value, p.fixture,
+      p.alarm_low, p.alarm_high, p.alarm_state, p.alarm_since,
       d.status AS device_status,
       r.value_num, r.value_text, r.confidence, r.quality,
       r.captured_at, r.received_at, r.frame_id
@@ -83,6 +84,8 @@ pointsApi.patch("/:pointId", async (c) => {
     .returning();
 
   if (!updated) return c.json({ error: `ไม่พบจุดวัด ${pointId}` }, 404);
+  // สเกล (deadband) / เกณฑ์เตือน เปลี่ยนแล้ว — ให้ ingest เห็นเฟรมถัดไปทันที ไม่รอรอบล้าง 5 นาที
+  invalidatePointConfig(pointId);
   return c.json({ point: updated });
 });
 

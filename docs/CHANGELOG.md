@@ -27,6 +27,27 @@
 
 ---
 
+## T-024 (doing): backend ของ alarm — โค้ดครบ, pure logic ผ่าน 18 ข้อ, รอเทส DB/SSE  🟡
+- **schema**: `alarm_low`/`alarm_high`/`alarm_state`/`alarm_since` บน `points` — migration `0003`
+  เป็น `ADD COLUMN` nullable 4 บรรทัด ปลอดภัยกับข้อมูลเดิม (**ยังไม่ apply** — Docker ปิดอยู่)
+- **`ingest/alarm.ts`** แยกเป็น pure function ตั้งใจ — ตรรกะที่พังแล้ว "ดูเหมือนทำงาน" ต้องเทสได้
+  โดยไม่พึ่ง DB ; กติกาตาม D-023: เปลี่ยนสถานะเมื่อเห็นติดกัน N ครั้ง · UNREADABLE ไม่ประเมิน
+  ไม่นับ ไม่รีเซ็ต · ถอนเกณฑ์ = เคลียร์ทันที · seed สถานะจาก DB ตอนเห็นจุดครั้งแรก
+- **จุดที่ต้องระวังตอนต่อเข้า `handleFrame`**: ประเมินจาก**ทุก** reading ไม่ใช่เฉพาะที่ throttle เก็บ
+  — ค่าที่นิ่งนอกเกณฑ์จะโดน deadband กรองทิ้งหลังเก็บครั้งแรก ถ้าประเมินเฉพาะที่เก็บจะไม่มีวัน
+  นับถึง N ; และ `evaluateAlarm` เป็น sync ล้วน จึงอยู่ในลูปที่ห้ามมี await ได้ (บทเรียนเดิม
+  ของ throttle ที่เคยพังเพราะ await แทรก)
+- เขียน DB + emit `alarm` **เฉพาะตอนเปลี่ยน** (ไม่ใช่ทุกเฟรม — ภาระ SD แบบที่ D-012 แก้) ·
+  SSE forward event ใหม่ · `GET /api/points` คืน 4 ฟิลด์
+- **แถม**: `invalidatePointConfig()` — เดิม cache สเกลล้างทุก 5 นาที แปลว่าตั้งเกณฑ์จาก UI แล้ว
+  ต้องรอถึง 5 นาที ; ตอนนี้ PATCH ล้าง cache ของจุดนั้นทันที เกณฑ์มีผลเฟรมถัดไป
+- verify: `bun run smoke-alarm` **ผ่าน 18 ข้อ** — เด้งครั้งเดียวเมื่อค่าค้าง 200 เฟรม · 999 วูบเดียว
+  ไม่เด้ง · สลับ 99.9/100.1 แปดครั้งไม่เด้ง · UNREADABLE แทรกไม่รีเซ็ตตัวนับ · restart ไม่เด้งซ้ำ ·
+  ขอบเกณฑ์ (100, 150) นับเป็นปกติ ; type-check ผ่าน
+- ⏳ **ยังค้าง**: apply migration + ยิง MQTT จริงดู DB/SSE ตาม done-when — รอ Docker Desktop
+
+---
+
 ## T-020: ตัด dead code ของ calibration — เหลือ GAUGE ชนิดเดียวถาวร (D-022)  🟡
 - ลบ `bboxSchema` + `sevenSegmentFixtureSchema` และยุบ `pointFixtureSchema` จาก
   discriminatedUnion เหลือ `gaugeFixtureSchema` ตัวเดียว — SEVEN_SEGMENT/WATER_METER

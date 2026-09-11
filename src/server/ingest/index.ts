@@ -22,6 +22,7 @@ import {
 import { liveEvents, type LiveReading } from "../events";
 import { shouldStore, markStored, throttleConfig } from "./throttle";
 import { cleanRawText, numericFromText } from "./normalize";
+import { evaluateAlarm, type AlarmThresholds, type AlarmTransition } from "./alarm";
 import { handleEvidence, ensureEvidenceDir } from "./evidence";
 
 const BROKER_URL = process.env.MQTT_URL ?? "mqtt://localhost:1883";
@@ -61,7 +62,7 @@ export function publish(
 // เพราะ broker จะมองว่าเป็น client คนละตัวทุกครั้งที่ restart แล้วทิ้งคิวเดิม
 const CLIENT_ID = process.env.MQTT_CLIENT_ID ?? "meter-ingest";
 
-let stats = { received: 0, invalid: 0, inserted: 0, duplicate: 0, throttled: 0 };
+let stats = { received: 0, invalid: 0, inserted: 0, duplicate: 0, throttled: 0, alarm_transitions: 0 };
 export const ingestStats = () => ({ ...stats, ...throttleConfig() });
 
 /** จอต้องเห็นค่าสด แต่ 26 เฟรม/วิ × หลายจุด = Chromium บน Pi รับไม่ไหว
@@ -69,24 +70,48 @@ export const ingestStats = () => ({ ...stats, ...throttleConfig() });
 const LIVE_EMIT_MIN_MS = Number(process.env.LIVE_EMIT_MIN_MS ?? 250);
 const lastEmitAt = new Map<string, number>();
 
-/** สเกลของแต่ละจุด ใช้คำนวณ deadband — cache ไว้ไม่ให้ query ทุกเฟรม */
-const scaleCache = new Map<string, { min: number | null; max: number | null }>();
+/** config ของแต่ละจุดที่ ingest ต้องใช้ทุกเฟรม — cache ไว้ไม่ให้ query ทุกเฟรม
+ *  สเกล (deadband ของ throttle) + เกณฑ์เตือน (alarm.ts) อ่านมาพร้อมกันใน query เดียว */
+type PointConfig = {
+  min: number | null;
+  max: number | null;
+  alarm: AlarmThresholds;
+};
+const configCache = new Map<string, PointConfig>();
 
-async function getScale(pointId: string) {
-  const hit = scaleCache.get(pointId);
+async function getPointConfig(pointId: string): Promise<PointConfig> {
+  const hit = configCache.get(pointId);
   if (hit) return hit;
   const [row] = await db
-    .select({ min: points.min_value, max: points.max_value })
+    .select({
+      min: points.min_value,
+      max: points.max_value,
+      alarm_low: points.alarm_low,
+      alarm_high: points.alarm_high,
+      alarm_state: points.alarm_state,
+    })
     .from(points)
     .where(drizzleSql`${points.point_id} = ${pointId}`);
-  const scale = { min: row?.min ?? null, max: row?.max ?? null };
-  scaleCache.set(pointId, scale);
-  return scale;
+  const cfg: PointConfig = {
+    min: row?.min ?? null,
+    max: row?.max ?? null,
+    alarm: { low: row?.alarm_low ?? null, high: row?.alarm_high ?? null, state: row?.alarm_state ?? null },
+  };
+  configCache.set(pointId, cfg);
+  return cfg;
 }
 
-// สเกลเปลี่ยนได้เมื่อมีคนมาตั้งค่าจุดวัด — ล้าง cache เป็นระยะ
-// ไม่ต้องแม่นยำทันที แค่ต้องไม่ค้างตลอดกาล
-setInterval(() => scaleCache.clear(), 5 * 60_000);
+/**
+ * ล้าง cache ของจุดเดียวเมื่อมีคนแก้ค่าตั้ง (PATCH) — ให้เกณฑ์ใหม่มีผล**เฟรมถัดไป**ทันที
+ * ไม่ต้องรอรอบล้าง 5 นาทีข้างล่าง (T-026 ต้องการให้ "มีผลทันทีโดยไม่ต้อง restart")
+ */
+export function invalidatePointConfig(pointId: string) {
+  configCache.delete(pointId);
+}
+
+// config เปลี่ยนได้เมื่อมีคนมาตั้งค่าจุดวัด — ล้าง cache เป็นระยะเป็นตาข่ายกันพลาด
+// (ทางหลักคือ invalidatePointConfig ข้างบน) ไม่ต้องแม่นยำทันที แค่ต้องไม่ค้างตลอดกาล
+setInterval(() => configCache.clear(), 5 * 60_000);
 
 /** เครื่องที่ยังไม่มีในตาราง — สร้างให้ก่อนเพื่อไม่ให้ FK ปฏิเสธ */
 async function ensureDevice(deviceId: string) {
@@ -146,13 +171,15 @@ async function handleFrame(frame: MeterFrameMessage) {
   // อ่าน lastStored ตัวเดียวกันก่อนที่ใครจะ markStored → ทุกเฟรมตัดสินว่า "เก็บ" พร้อมกัน
   // ผลคือเพดาน 1 ครั้ง/วินาที ไม่ทำงานเลยตอนยิงรัว (วัดได้ 6.3 แถว/วิ/จุด)
   // unit test จับไม่ได้เพราะยิงทีละเฟรมแล้วรอ — เจอตอนวัดกับอัตราจริงเท่านั้น
-  const scales = new Map<string, { min: number | null; max: number | null }>();
-  for (const r of frame.readings) scales.set(r.point_id, await getScale(r.point_id));
+  const configs = new Map<string, PointConfig>();
+  for (const r of frame.readings) configs.set(r.point_id, await getPointConfig(r.point_id));
 
   // ตั้งแต่บรรทัดนี้จนจบลูป ห้ามมี await เด็ดขาด
   const keep = [];
+  const transitions: AlarmTransition[] = [];
   for (const r of frame.readings) {
-    const decision = shouldStore(r, scales.get(r.point_id)!, now);
+    const cfg = configs.get(r.point_id)!;
+    const decision = shouldStore(r, cfg, now);
     if (decision.store) {
       keep.push(r);
       // mark ทันทีตอนตัดสินใจ ไม่รอผล insert — ยอมแลกว่าถ้า insert ล้ม
@@ -162,6 +189,11 @@ async function handleFrame(frame: MeterFrameMessage) {
     } else {
       stats.throttled += 1;
     }
+
+    // ประเมินเกณฑ์จาก**ทุก** reading ไม่ใช่เฉพาะที่เก็บ — ค่าที่นิ่งนอกเกณฑ์จะโดน deadband
+    // กรองทิ้งหลังเก็บครั้งแรก ถ้าประเมินเฉพาะที่เก็บจะไม่มีวันนับถึง N (ดู alarm.ts)
+    const t = evaluateAlarm(r.point_id, r.value_num, r.quality, cfg.alarm);
+    if (t) transitions.push(t);
   }
 
   if (keep.length > 0) {
@@ -193,6 +225,28 @@ async function handleFrame(frame: MeterFrameMessage) {
         .set({ last_frame_at: new Date() })
         .where(drizzleSql`${devices.device_id} = ${frame.device_id}`);
     }
+  }
+
+  // ---- สถานะเกณฑ์เปลี่ยน: เขียน DB + แจ้งจอ เฉพาะตอนเปลี่ยนเท่านั้น (D-023) ----
+  // เขียนทุกเฟรม = ภาระ SD แบบเดียวกับที่ D-012 เพิ่งแก้ ; ที่ตัดสินไปแล้วใน alarm.ts
+  // คือ "เปลี่ยนจริง" จึงเขียนได้เลยโดยไม่ต้องเช็คซ้ำ
+  for (const t of transitions) {
+    await db
+      .update(points)
+      .set({ alarm_state: t.to, alarm_since: t.to ? capturedAt : null })
+      .where(drizzleSql`${points.point_id} = ${t.point_id}`);
+    // ให้ cache เห็นสถานะใหม่ด้วย — ไม่งั้นรอบล้าง 5 นาทีจะโหลดค่าเก่ากลับมา seed ซ้ำ
+    const cfg = configs.get(t.point_id);
+    if (cfg) cfg.alarm.state = t.to;
+    liveEvents.emit("alarm", {
+      point_id: t.point_id,
+      device_id: frame.device_id,
+      from: t.from,
+      to: t.to,
+      value: t.value,
+      captured_at: frame.captured_at,
+    });
+    stats.alarm_transitions += 1;
   }
 
   // ---- ส่งขึ้นจอ: แยกจากการเก็บโดยตั้งใจ ----

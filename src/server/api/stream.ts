@@ -5,7 +5,7 @@
 
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { liveEvents, type LiveReading, type LiveDeviceState } from "../events";
+import { liveEvents, type LiveReading, type LiveDeviceState, type LiveAlarm } from "../events";
 
 export const streamApi = new Hono();
 
@@ -35,9 +35,11 @@ streamApi.get("/", (c) =>
 
     const onReadings = (readings: LiveReading[]) => queue("readings", readings);
     const onDevice = (device: LiveDeviceState) => queue("device", device);
+    const onAlarm = (alarm: LiveAlarm) => queue("alarm", alarm);
 
     liveEvents.on("readings", onReadings);
     liveEvents.on("device", onDevice);
+    liveEvents.on("alarm", onAlarm);
 
     // ⚠️ ต้องถอด listener เมื่อ client ตัดสาย ไม่งั้นทุกครั้งที่จอ kiosk reconnect
     // จะทิ้ง listener ค้างไว้ตัวหนึ่ง สะสมจนหน่วยความจำบวมและ event ถูกส่งซ้ำหลายรอบ
@@ -48,6 +50,7 @@ streamApi.get("/", (c) =>
       clients -= 1;
       liveEvents.off("readings", onReadings);
       liveEvents.off("device", onDevice);
+      liveEvents.off("alarm", onAlarm);
     };
     stream.onAbort(cleanup);
 
